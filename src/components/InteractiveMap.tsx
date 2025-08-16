@@ -1,12 +1,12 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Contact } from '@/types/contact';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Mail, Instagram, Linkedin, Globe, Gift, X } from 'lucide-react';
+import { MapPin, Calendar, Mail, Instagram, Linkedin, Globe, Gift, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useMapboxToken } from '@/hooks/useMapboxToken';
 
 interface InteractiveMapProps {
   contacts: Contact[];
@@ -134,7 +134,8 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
   const map = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const { token: mapboxToken, isLoading: tokenLoading, error: tokenError } = useMapboxToken();
 
   // Get contacts with coordinates
   const contactsWithCoordinates = contacts.filter(contact => 
@@ -155,59 +156,95 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
   };
 
   useEffect(() => {
-    // Get Mapbox token from environment or fallback
-    const token = 'pk.eyJ1IjoiYWRtaW5lIiwiYSI6ImNtNjdtaGUxcDI5Zm8yanF2Y29kY2VlZGMifQ.OtSNu9WGDVXVIj0DkW5mjQ';
-    setMapboxToken(token);
-  }, []);
-
-  useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
-
-    // Initialize map
-    mapboxgl.accessToken = mapboxToken;
-    
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/light-v11',
-      projection: 'globe' as any,
-      zoom: 1.5,
-      center: [30, 15],
-    });
-
-    // Add navigation controls
-    map.current.addControl(
-      new mapboxgl.NavigationControl({
-        visualizePitch: true,
-      }),
-      'top-right'
-    );
-
-    // Add atmosphere and fog effects
-    map.current.on('style.load', () => {
-      map.current?.setFog({
-        color: 'rgb(255, 255, 255)',
-        'high-color': 'rgb(200, 200, 225)',
-        'horizon-blend': 0.2,
+    if (!mapContainer.current || !mapboxToken || tokenLoading) {
+      console.log('Map initialization waiting for:', { 
+        container: !!mapContainer.current, 
+        token: !!mapboxToken, 
+        tokenLoading 
       });
-    });
+      return;
+    }
+
+    console.log('Initializing Mapbox with token...');
+    
+    try {
+      // Initialize map
+      mapboxgl.accessToken = mapboxToken;
+      
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/light-v11',
+        projection: 'globe' as any,
+        zoom: 1.5,
+        center: [30, 15],
+      });
+
+      // Add error handling
+      map.current.on('error', (e) => {
+        console.error('Mapbox error:', e);
+        setMapError(`Map error: ${e.error?.message || 'Unknown error'}`);
+      });
+
+      // Add load event listener
+      map.current.on('load', () => {
+        console.log('Map loaded successfully');
+        setMapError(null);
+      });
+
+      // Add navigation controls
+      map.current.addControl(
+        new mapboxgl.NavigationControl({
+          visualizePitch: true,
+        }),
+        'top-right'
+      );
+
+      // Add atmosphere and fog effects
+      map.current.on('style.load', () => {
+        console.log('Map style loaded');
+        map.current?.setFog({
+          color: 'rgb(255, 255, 255)',
+          'high-color': 'rgb(200, 200, 225)',
+          'horizon-blend': 0.2,
+        });
+      });
+
+      console.log('Map initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize map:', error);
+      setMapError(`Failed to initialize map: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 
     // Cleanup
     return () => {
-      map.current?.remove();
+      if (map.current) {
+        console.log('Cleaning up map');
+        map.current.remove();
+        map.current = null;
+      }
     };
-  }, [mapboxToken]);
+  }, [mapboxToken, tokenLoading]);
 
   useEffect(() => {
-    if (!map.current || !contactsWithCoordinates.length) return;
+    if (!map.current || !contactsWithCoordinates.length) {
+      console.log('Skipping marker addition:', { 
+        mapExists: !!map.current, 
+        contactCount: contactsWithCoordinates.length 
+      });
+      return;
+    }
 
-    // Wait for map to load
-    map.current.on('load', () => {
+    console.log(`Adding ${contactsWithCoordinates.length} markers to map`);
+
+    const addMarkers = () => {
       // Remove existing markers
-      const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
+      const existingMarkers = document.querySelectorAll('.contact-marker');
       existingMarkers.forEach(marker => marker.remove());
 
       // Add markers for each contact
-      contactsWithCoordinates.forEach(contact => {
+      contactsWithCoordinates.forEach((contact, index) => {
+        console.log(`Adding marker ${index + 1} for ${contact.name} at [${contact.longitude}, ${contact.latitude}]`);
+        
         const color = getDateColor(contact.date_met);
         
         // Create marker element
@@ -239,6 +276,7 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
 
         // Add click handler
         markerEl.addEventListener('click', () => {
+          console.log(`Marker clicked for ${contact.name}`);
           setSelectedContact(contact);
           
           // Close existing popup
@@ -268,13 +306,17 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
           });
         });
       });
-    });
+      
+      console.log('All markers added successfully');
+    };
 
-    // If map is already loaded, add markers immediately
+    // Wait for map to load before adding markers
     if (map.current.isStyleLoaded()) {
-      map.current.fire('load');
+      addMarkers();
+    } else {
+      map.current.on('load', addMarkers);
     }
-  }, [contactsWithCoordinates]);
+  }, [contactsWithCoordinates, map.current]);
 
   const closePopup = () => {
     setSelectedContact(null);
@@ -284,10 +326,37 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
     }
   };
 
-  if (!mapboxToken) {
+  // Show loading state
+  if (tokenLoading) {
     return (
       <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
-        <div className="text-gray-500">Loading map...</div>
+        <div className="text-gray-500">Loading Mapbox...</div>
+      </div>
+    );
+  }
+
+  // Show token error
+  if (tokenError) {
+    return (
+      <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <div className="text-red-600 font-medium mb-2">Mapbox Configuration Error</div>
+          <div className="text-gray-600 text-sm">{tokenError}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show map error
+  if (mapError) {
+    return (
+      <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <div className="text-red-600 font-medium mb-2">Map Loading Error</div>
+          <div className="text-gray-600 text-sm">{mapError}</div>
+        </div>
       </div>
     );
   }
