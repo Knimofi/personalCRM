@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contacts: {
+        Row: {
+          context: string | null
+          created_at: string
+          date_met: string | null
+          email: string | null
+          id: string
+          instagram: string | null
+          latitude: number | null
+          linkedin: string | null
+          location: string | null
+          longitude: number | null
+          name: string
+          raw_content: string | null
+          telegram_message_id: string | null
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          date_met?: string | null
+          email?: string | null
+          id?: string
+          instagram?: string | null
+          latitude?: number | null
+          linkedin?: string | null
+          location?: string | null
+          longitude?: number | null
+          name: string
+          raw_content?: string | null
+          telegram_message_id?: string | null
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          date_met?: string | null
+          email?: string | null
+          id?: string
+          instagram?: string | null
+          latitude?: number | null
+          linkedin?: string | null
+          location?: string | null
+          longitude?: number | null
+          name?: string
+          raw_content?: string | null
+          telegram_message_id?: string | null
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
