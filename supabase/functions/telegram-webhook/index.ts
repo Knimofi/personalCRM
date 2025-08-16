@@ -1,5 +1,3 @@
-
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -55,13 +53,12 @@ serve(async (req) => {
       console.log('Extracted contact data:', contactData);
       
       if (contactData && contactData.name) {
-        // Store in Supabase - we need a user_id, so we'll use a default for now
-        // In production, you'd want to authenticate the Telegram user
+        // Store in Supabase with default user ID for Telegram contacts
         const { data, error } = await supabase
           .from('contacts')
           .insert([{
             ...contactData,
-            user_id: '00000000-0000-0000-0000-000000000000', // Default user ID - you'll need to handle user authentication
+            user_id: '00000000-0000-0000-0000-000000000001', // Use default Telegram user
             raw_content: processedText,
             telegram_message_id: message.message_id.toString(),
           }]);
@@ -74,6 +71,10 @@ serve(async (req) => {
           });
         } else {
           console.log('Contact successfully saved:', data);
+          return new Response(JSON.stringify({ success: true, contact: data }), { 
+            status: 200,
+            headers: corsHeaders 
+          });
         }
       } else {
         console.log('No valid contact data extracted');
@@ -271,4 +272,3 @@ async function geocodeLocation(location: string) {
   }
   return null;
 }
-
