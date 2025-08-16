@@ -19,16 +19,47 @@ export const useContacts = () => {
     queryFn: async () => {
       console.log('Fetching contacts from database...');
       
-      // Temporarily fetch ALL contacts for debugging
-      const { data, error } = await supabase
+      // First, let's check if we can access the table at all
+      const { data: testData, error: testError } = await supabase
+        .from('contacts')
+        .select('count')
+        .single();
+      
+      console.log('Table access test:', { testData, testError });
+
+      // Try fetching with different approaches to debug RLS issues
+      let data, error;
+      
+      // Approach 1: Try without any filters first
+      console.log('Attempting to fetch all contacts...');
+      const result1 = await supabase
         .from('contacts')
         .select('*')
         .order('created_at', { ascending: false });
-
-      console.log('Raw query response:', { data, error });
       
+      console.log('Fetch all contacts result:', result1);
+      
+      if (result1.error) {
+        console.error('Error fetching all contacts:', result1.error);
+        
+        // Approach 2: Try with specific user_id filter
+        console.log('Trying with specific user_id filter...');
+        const result2 = await supabase
+          .from('contacts')
+          .select('*')
+          .eq('user_id', '00000000-0000-0000-0000-000000000001')
+          .order('created_at', { ascending: false });
+        
+        console.log('Fetch with user filter result:', result2);
+        data = result2.data;
+        error = result2.error;
+      } else {
+        data = result1.data;
+        error = result1.error;
+      }
+
       if (error) {
-        console.error('Database query error:', error);
+        console.error('Final database query error:', error);
         throw error;
       }
       
@@ -193,7 +224,7 @@ export const useContacts = () => {
     contacts,
     isLoading,
     error,
-    refetch, // Added manual refresh capability
+    refetch,
     createContact,
     updateContact,
     deleteContact,
