@@ -1,154 +1,79 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Contact } from '@/types/contact';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Mail, Instagram, Linkedin, Globe, Gift, X, AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
+import { GroupedMarker } from './GroupedMarker';
+import { MultiContactPopup } from './MultiContactPopup';
+import { createRoot } from 'react-dom/client';
 
 interface InteractiveMapProps {
   contacts: Contact[];
 }
 
-interface ContactPopupProps {
-  contact: Contact;
-  onClose: () => void;
+interface LocationGroup {
+  coordinates: string;
+  latitude: number;
+  longitude: number;
+  contacts: Contact[];
 }
-
-const ContactPopup = ({ contact, onClose }: ContactPopupProps) => {
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null;
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const getSocialLink = (contact: Contact, type: 'email' | 'instagram' | 'linkedin' | 'website') => {
-    switch (type) {
-      case 'email': return contact.email ? `mailto:${contact.email}` : null;
-      case 'instagram': return contact.instagram ? `https://instagram.com/${contact.instagram.replace('@', '')}` : null;
-      case 'linkedin': return contact.linkedin;
-      case 'website': return contact.website;
-    }
-  };
-
-  return (
-    <Card className="w-80 shadow-lg">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{contact.name}</CardTitle>
-          <Button variant="ghost" size="sm" onClick={onClose} className="h-6 w-6 p-0">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        {contact.location && (
-          <div className="flex items-center space-x-1 text-sm text-gray-600">
-            <MapPin className="h-3 w-3" />
-            <span>{contact.location}</span>
-          </div>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {contact.context && (
-          <div>
-            <p className="text-sm text-gray-700">{contact.context}</p>
-          </div>
-        )}
-        
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          {contact.date_met && (
-            <div className="flex items-center space-x-1">
-              <Calendar className="h-3 w-3 text-gray-400" />
-              <span>Met: {formatDate(contact.date_met)}</span>
-            </div>
-          )}
-          
-          {contact.birthday && (
-            <div className="flex items-center space-x-1">
-              <Gift className="h-3 w-3 text-gray-400" />
-              <span>Birthday: {formatDate(contact.birthday)}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {contact.email && (
-            <a
-              href={getSocialLink(contact, 'email')!}
-              className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-xs"
-            >
-              <Mail className="h-3 w-3" />
-              <span>Email</span>
-            </a>
-          )}
-          
-          {contact.instagram && (
-            <a
-              href={getSocialLink(contact, 'instagram')!}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-xs"
-            >
-              <Instagram className="h-3 w-3" />
-              <span>Instagram</span>
-            </a>
-          )}
-          
-          {contact.linkedin && (
-            <a
-              href={getSocialLink(contact, 'linkedin')!}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-xs"
-            >
-              <Linkedin className="h-3 w-3" />
-              <span>LinkedIn</span>
-            </a>
-          )}
-          
-          {contact.website && (
-            <a
-              href={getSocialLink(contact, 'website')!}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 text-xs"
-            >
-              <Globe className="h-3 w-3" />
-              <span>Website</span>
-            </a>
-          )}
-        </div>
-
-        {contact.is_hidden && (
-          <Badge variant="secondary" className="text-xs">
-            Hidden Contact
-          </Badge>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
 
 export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const popupRef = useRef<mapboxgl.Popup | null>(null);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const [selectedLocationGroup, setSelectedLocationGroup] = useState<LocationGroup | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const { token: mapboxToken, isLoading: tokenLoading, error: tokenError } = useMapboxToken();
 
-  // Get contacts with coordinates
-  const contactsWithCoordinates = contacts.filter(contact => 
-    contact.latitude && contact.longitude
-  );
+  // Get contacts with coordinates and group them by location
+  const locationGroups = React.useMemo(() => {
+    const contactsWithCoordinates = contacts.filter(contact => 
+      contact.latitude && contact.longitude
+    );
+
+    const groups: { [key: string]: Contact[] } = {};
+    
+    contactsWithCoordinates.forEach(contact => {
+      // Group contacts that are very close to each other (within ~100m)
+      const roundedLat = Math.round(contact.latitude! * 1000) / 1000;
+      const roundedLng = Math.round(contact.longitude! * 1000) / 1000;
+      const key = `${roundedLat}-${roundedLng}`;
+      
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(contact);
+    });
+
+    return Object.entries(groups).map(([coordinates, groupContacts]) => {
+      const [lat, lng] = coordinates.split('-').map(Number);
+      return {
+        coordinates,
+        latitude: lat,
+        longitude: lng,
+        contacts: groupContacts,
+      };
+    });
+  }, [contacts]);
 
   // Get date color for markers
-  const getDateColor = (dateString?: string) => {
-    if (!dateString) return '#6B7280'; // gray-500
+  const getDateColor = (contacts: Contact[]) => {
+    if (!contacts.length) return '#6B7280'; // gray-500
     
-    const date = new Date(dateString);
+    // Use the most recent contact's date for the group color
+    const mostRecentDate = contacts
+      .map(c => c.date_met ? new Date(c.date_met) : null)
+      .filter(Boolean)
+      .sort((a, b) => b!.getTime() - a!.getTime())[0];
+    
+    if (!mostRecentDate) return '#6B7280'; // gray-500
+    
     const now = new Date();
-    const diffInDays = (now.getTime() - date.getTime()) / (1000 * 3600 * 24);
+    const diffInDays = (now.getTime() - mostRecentDate.getTime()) / (1000 * 3600 * 24);
     
     if (diffInDays <= 30) return '#10B981'; // green-500
     if (diffInDays <= 90) return '#F59E0B'; // yellow-500
@@ -179,8 +104,8 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/light-v11',
         projection: 'globe' as any,
-        zoom: 1.5,
-        center: [30, 15],
+        zoom: 4,
+        center: [10, 54], // Center on Europe
       });
 
       // Add error handling
@@ -230,88 +155,65 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
   }, [mapboxToken, tokenLoading]);
 
   useEffect(() => {
-    if (!map.current || !contactsWithCoordinates.length) {
+    if (!map.current || !locationGroups.length) {
       console.log('Skipping marker addition:', { 
         mapExists: !!map.current, 
-        contactCount: contactsWithCoordinates.length 
+        groupCount: locationGroups.length 
       });
       return;
     }
 
-    console.log(`Adding ${contactsWithCoordinates.length} markers to map`);
+    console.log(`Adding ${locationGroups.length} location groups to map`);
 
     const addMarkers = () => {
       // Remove existing markers
-      const existingMarkers = document.querySelectorAll('.contact-marker');
-      existingMarkers.forEach(marker => marker.remove());
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
 
-      // Add markers for each contact
-      contactsWithCoordinates.forEach((contact, index) => {
-        console.log(`Adding marker ${index + 1} for ${contact.name} at [${contact.longitude}, ${contact.latitude}]`);
+      // Add markers for each location group
+      locationGroups.forEach((locationGroup, index) => {
+        console.log(`Adding marker ${index + 1} for location group with ${locationGroup.contacts.length} contacts at [${locationGroup.longitude}, ${locationGroup.latitude}]`);
         
-        const color = getDateColor(contact.date_met);
+        const color = getDateColor(locationGroup.contacts);
         
-        // Create marker element
+        // Create marker element container
         const markerEl = document.createElement('div');
-        markerEl.className = 'contact-marker';
-        markerEl.style.cssText = `
-          width: 12px;
-          height: 12px;
-          background-color: ${color};
-          border: 2px solid white;
-          border-radius: 50%;
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          transition: transform 0.2s;
-        `;
-
-        // Add hover effect
-        markerEl.addEventListener('mouseenter', () => {
-          markerEl.style.transform = 'scale(1.3)';
-        });
-        markerEl.addEventListener('mouseleave', () => {
-          markerEl.style.transform = 'scale(1)';
-        });
+        
+        // Create React root and render the GroupedMarker component
+        const root = createRoot(markerEl);
+        root.render(
+          <GroupedMarker
+            contacts={locationGroup.contacts}
+            color={color}
+            onClick={() => {
+              console.log(`Marker clicked for location group with ${locationGroup.contacts.length} contacts`);
+              setSelectedLocationGroup(locationGroup);
+              
+              // Zoom to marker
+              map.current?.easeTo({
+                center: [locationGroup.longitude, locationGroup.latitude],
+                zoom: Math.max(map.current.getZoom(), 8),
+                duration: 1000,
+              });
+            }}
+            onMouseEnter={() => {
+              // Optional: could add hover effects here
+            }}
+            onMouseLeave={() => {
+              // Optional: could remove hover effects here
+            }}
+          />
+        );
 
         // Create marker
         const marker = new mapboxgl.Marker(markerEl)
-          .setLngLat([contact.longitude!, contact.latitude!])
+          .setLngLat([locationGroup.longitude, locationGroup.latitude])
           .addTo(map.current!);
 
-        // Add click handler
-        markerEl.addEventListener('click', () => {
-          console.log(`Marker clicked for ${contact.name}`);
-          setSelectedContact(contact);
-          
-          // Close existing popup
-          if (popupRef.current) {
-            popupRef.current.remove();
-          }
-
-          // Create new popup
-          const popupEl = document.createElement('div');
-          
-          const popup = new mapboxgl.Popup({
-            offset: 15,
-            closeButton: false,
-            closeOnClick: false,
-          })
-            .setLngLat([contact.longitude!, contact.latitude!])
-            .setDOMContent(popupEl)
-            .addTo(map.current!);
-
-          popupRef.current = popup;
-
-          // Zoom to marker
-          map.current?.easeTo({
-            center: [contact.longitude!, contact.latitude!],
-            zoom: Math.max(map.current.getZoom(), 5),
-            duration: 1000,
-          });
-        });
+        markersRef.current.push(marker);
       });
       
-      console.log('All markers added successfully');
+      console.log('All location group markers added successfully');
     };
 
     // Wait for map to load before adding markers
@@ -320,14 +222,16 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
     } else {
       map.current.on('load', addMarkers);
     }
-  }, [contactsWithCoordinates, map.current]);
+
+    // Cleanup function
+    return () => {
+      markersRef.current.forEach(marker => marker.remove());
+      markersRef.current = [];
+    };
+  }, [locationGroups]);
 
   const closePopup = () => {
-    setSelectedContact(null);
-    if (popupRef.current) {
-      popupRef.current.remove();
-      popupRef.current = null;
-    }
+    setSelectedLocationGroup(null);
   };
 
   // Show loading state
@@ -382,9 +286,12 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
       <div ref={mapContainer} className="w-full h-96 rounded-lg shadow-lg" />
       
       {/* Floating popup */}
-      {selectedContact && (
+      {selectedLocationGroup && (
         <div className="absolute top-4 left-4 z-10">
-          <ContactPopup contact={selectedContact} onClose={closePopup} />
+          <MultiContactPopup 
+            contacts={selectedLocationGroup.contacts} 
+            onClose={closePopup} 
+          />
         </div>
       )}
 

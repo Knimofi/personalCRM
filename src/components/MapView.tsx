@@ -1,10 +1,11 @@
 
 import { useMemo } from 'react';
 import { Contact } from '@/types/contact';
-import { MapPin, Users, Globe } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { InteractiveMap } from './InteractiveMap';
+import { LocationDropdown } from './LocationDropdown';
+import { TopLocationsStats } from './TopLocationsStats';
 
 interface MapViewProps {
   contacts: Contact[];
@@ -16,28 +17,10 @@ export const MapView = ({ contacts, isLoading }: MapViewProps) => {
     return contacts.filter(contact => contact.latitude && contact.longitude);
   }, [contacts]);
 
-  const locationGroups = useMemo(() => {
-    const groups: { [key: string]: Contact[] } = {};
-    contactsWithCoordinates.forEach(contact => {
-      const key = `${contact.latitude}-${contact.longitude}`;
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(contact);
-    });
-    return groups;
-  }, [contactsWithCoordinates]);
-
-  const getDateColor = (dateString?: string) => {
-    if (!dateString) return 'bg-gray-400';
-    
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInDays = (now.getTime() - date.getTime()) / (1000 * 3600 * 24);
-    
-    if (diffInDays <= 30) return 'bg-green-500'; // Recent - Green
-    if (diffInDays <= 90) return 'bg-yellow-500'; // Medium - Yellow
-    return 'bg-red-500'; // Old - Red
+  const handleLocationSelect = (latitude: number, longitude: number) => {
+    // This function will be used by the InteractiveMap component
+    // We'll need to pass this down or implement it in the InteractiveMap
+    console.log('Location selected:', { latitude, longitude });
   };
 
   if (isLoading) {
@@ -50,40 +33,15 @@ export const MapView = ({ contacts, isLoading }: MapViewProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{contacts.length}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">With Locations</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{contactsWithCoordinates.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {((contactsWithCoordinates.length / contacts.length) * 100).toFixed(0)}% of total
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unique Locations</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{Object.keys(locationGroups).length}</div>
-          </CardContent>
-        </Card>
+      {/* Location Controls and Stats */}
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
+        <LocationDropdown 
+          contacts={contactsWithCoordinates} 
+          onLocationSelect={handleLocationSelect}
+        />
+        <div className="lg:ml-auto">
+          <TopLocationsStats contacts={contacts} />
+        </div>
       </div>
 
       {/* Interactive Map */}
@@ -123,52 +81,6 @@ export const MapView = ({ contacts, isLoading }: MapViewProps) => {
           )}
         </CardContent>
       </Card>
-
-      {/* Location Groups */}
-      {Object.keys(locationGroups).length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Contacts by Location</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {Object.entries(locationGroups).map(([coordinates, groupContacts]) => {
-                const [lat, lng] = coordinates.split('-').map(Number);
-                const location = groupContacts[0].location || 'Unknown Location';
-                
-                return (
-                  <div key={coordinates} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="h-4 w-4 text-gray-500" />
-                        <span className="font-medium">{location}</span>
-                        <Badge variant="secondary">{groupContacts.length} contact{groupContacts.length > 1 ? 's' : ''}</Badge>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {lat.toFixed(4)}, {lng.toFixed(4)}
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      {groupContacts.map(contact => (
-                        <div key={contact.id} className="flex items-center space-x-2">
-                          <div className={`w-2 h-2 rounded-full ${getDateColor(contact.date_met)}`}></div>
-                          <span className="text-sm">{contact.name}</span>
-                          {contact.date_met && (
-                            <span className="text-xs text-gray-500">
-                              ({new Date(contact.date_met).toLocaleDateString()})
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
