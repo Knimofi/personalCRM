@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Contact } from '@/types/contact';
@@ -21,19 +21,42 @@ interface LocationGroup {
   contacts: Contact[];
 }
 
-export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
+export interface InteractiveMapRef {
+  flyToLocation: (latitude: number, longitude: number) => void;
+}
+
+export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>(({ contacts }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [selectedLocationGroup, setSelectedLocationGroup] = useState<LocationGroup | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
   const { token: mapboxToken, isLoading: tokenLoading, error: tokenError } = useMapboxToken();
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    flyToLocation: (latitude: number, longitude: number) => {
+      if (map.current) {
+        console.log(`Flying to location: [${longitude}, ${latitude}]`);
+        map.current.flyTo({
+          center: [longitude, latitude],
+          zoom: 10,
+          duration: 2000,
+          essential: true
+        });
+      }
+    }
+  }));
 
   // Get contacts with coordinates and group them by location
   const locationGroups = React.useMemo(() => {
     const contactsWithCoordinates = contacts.filter(contact => 
-      contact.latitude && contact.longitude
+      contact.latitude && contact.longitude && 
+      !isNaN(contact.latitude) && !isNaN(contact.longitude)
     );
+
+    console.log(`Found ${contactsWithCoordinates.length} contacts with valid coordinates out of ${contacts.length} total contacts`);
 
     const groups: { [key: string]: Contact[] } = {};
     
@@ -49,7 +72,7 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
       groups[key].push(contact);
     });
 
-    return Object.entries(groups).map(([coordinates, groupContacts]) => {
+    const groupArray = Object.entries(groups).map(([coordinates, groupContacts]) => {
       const [lat, lng] = coordinates.split('-').map(Number);
       return {
         coordinates,
@@ -58,6 +81,9 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
         contacts: groupContacts,
       };
     });
+
+    console.log(`Created ${groupArray.length} location groups:`, groupArray);
+    return groupArray;
   }, [contacts]);
 
   // Get date color for markers
@@ -84,6 +110,7 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
     window.location.reload();
   };
 
+  // Initialize map
   useEffect(() => {
     if (!mapContainer.current || !mapboxToken || tokenLoading) {
       console.log('Map initialization waiting for:', { 
@@ -97,7 +124,6 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
     console.log('Initializing Mapbox with token...');
     
     try {
-      // Initialize map
       mapboxgl.accessToken = mapboxToken;
       
       map.current = new mapboxgl.Map({
@@ -118,6 +144,7 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
       map.current.on('load', () => {
         console.log('Map loaded successfully');
         setMapError(null);
+        setIsMapReady(true);
       });
 
       // Add navigation controls
@@ -144,7 +171,6 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
       setMapError(`Failed to initialize map: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
-    // Cleanup
     return () => {
       if (map.current) {
         console.log('Cleaning up map');
@@ -154,10 +180,12 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
     };
   }, [mapboxToken, tokenLoading]);
 
+  // Add markers when map is ready and we have location groups
   useEffect(() => {
-    if (!map.current || !locationGroups.length) {
+    if (!map.current || !isMapReady || !locationGroups.length) {
       console.log('Skipping marker addition:', { 
         mapExists: !!map.current, 
+        mapReady: isMapReady,
         groupCount: locationGroups.length 
       });
       return;
@@ -165,70 +193,51 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
 
     console.log(`Adding ${locationGroups.length} location groups to map`);
 
-    const addMarkers = () => {
-      // Remove existing markers
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
+    // Remove existing markers
+    markersRef.current.forEach(marker => {
+      marker.remove();
+    });
+    markersRef.current = [];
 
-      // Add markers for each location group
-      locationGroups.forEach((locationGroup, index) => {
-        console.log(`Adding marker ${index + 1} for location group with ${locationGroup.contacts.length} contacts at [${locationGroup.longitude}, ${locationGroup.latitude}]`);
-        
-        const color = getDateColor(locationGroup.contacts);
-        
-        // Create marker element container
-        const markerEl = document.createElement('div');
-        
-        // Create React root and render the GroupedMarker component
-        const root = createRoot(markerEl);
-        root.render(
-          <GroupedMarker
-            contacts={locationGroup.contacts}
-            color={color}
-            onClick={() => {
-              console.log(`Marker clicked for location group with ${locationGroup.contacts.length} contacts`);
-              setSelectedLocationGroup(locationGroup);
-              
-              // Zoom to marker
-              map.current?.easeTo({
-                center: [locationGroup.longitude, locationGroup.latitude],
-                zoom: Math.max(map.current.getZoom(), 8),
-                duration: 1000,
-              });
-            }}
-            onMouseEnter={() => {
-              // Optional: could add hover effects here
-            }}
-            onMouseLeave={() => {
-              // Optional: could remove hover effects here
-            }}
-          />
-        );
-
-        // Create marker
-        const marker = new mapboxgl.Marker(markerEl)
-          .setLngLat([locationGroup.longitude, locationGroup.latitude])
-          .addTo(map.current!);
-
-        markersRef.current.push(marker);
-      });
+    // Add markers for each location group
+    locationGroups.forEach((locationGroup, index) => {
+      console.log(`Adding marker ${index + 1} for location group with ${locationGroup.contacts.length} contacts at [${locationGroup.longitude}, ${locationGroup.latitude}]`);
       
-      console.log('All location group markers added successfully');
-    };
+      const color = getDateColor(locationGroup.contacts);
+      
+      // Create marker element container
+      const markerEl = document.createElement('div');
+      markerEl.style.cursor = 'pointer';
+      
+      // Create React root and render the GroupedMarker component
+      const root = createRoot(markerEl);
+      root.render(
+        <GroupedMarker
+          contacts={locationGroup.contacts}
+          color={color}
+          onClick={() => {
+            console.log(`Marker clicked for location group with ${locationGroup.contacts.length} contacts`);
+            setSelectedLocationGroup(locationGroup);
+          }}
+          onMouseEnter={() => {
+            // Optional: could add hover effects here
+          }}
+          onMouseLeave={() => {
+            // Optional: could remove hover effects here
+          }}
+        />
+      );
 
-    // Wait for map to load before adding markers
-    if (map.current.isStyleLoaded()) {
-      addMarkers();
-    } else {
-      map.current.on('load', addMarkers);
-    }
+      // Create marker
+      const marker = new mapboxgl.Marker(markerEl)
+        .setLngLat([locationGroup.longitude, locationGroup.latitude])
+        .addTo(map.current!);
 
-    // Cleanup function
-    return () => {
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
-    };
-  }, [locationGroups]);
+      markersRef.current.push(marker);
+    });
+    
+    console.log(`Successfully added ${markersRef.current.length} markers to map`);
+  }, [locationGroups, isMapReady]);
 
   const closePopup = () => {
     setSelectedLocationGroup(null);
@@ -315,4 +324,6 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
       </div>
     </div>
   );
-};
+});
+
+InteractiveMap.displayName = 'InteractiveMap';

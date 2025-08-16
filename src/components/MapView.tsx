@@ -1,9 +1,9 @@
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Contact } from '@/types/contact';
 import { Globe } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { InteractiveMap } from './InteractiveMap';
+import { InteractiveMap, InteractiveMapRef } from './InteractiveMap';
 import { LocationDropdown } from './LocationDropdown';
 import { TopLocationsStats } from './TopLocationsStats';
 
@@ -13,14 +13,15 @@ interface MapViewProps {
 }
 
 export const MapView = ({ contacts, isLoading }: MapViewProps) => {
+  const mapRef = useRef<InteractiveMapRef>(null);
+  
   const contactsWithCoordinates = useMemo(() => {
     return contacts.filter(contact => contact.latitude && contact.longitude);
   }, [contacts]);
 
   const handleLocationSelect = (latitude: number, longitude: number) => {
-    // This function will be used by the InteractiveMap component
-    // We'll need to pass this down or implement it in the InteractiveMap
-    console.log('Location selected:', { latitude, longitude });
+    console.log('Location selected in MapView:', { latitude, longitude });
+    mapRef.current?.flyToLocation(latitude, longitude);
   };
 
   if (isLoading) {
@@ -54,7 +55,7 @@ export const MapView = ({ contacts, isLoading }: MapViewProps) => {
         </CardHeader>
         <CardContent>
           {contactsWithCoordinates.length > 0 ? (
-            <InteractiveMap contacts={contactsWithCoordinates} />
+            <InteractiveMap ref={mapRef} contacts={contactsWithCoordinates} />
           ) : (
             <div className="bg-gray-100 rounded-lg p-8 text-center">
               <Globe className="h-16 w-16 text-gray-400 mx-auto mb-4" />

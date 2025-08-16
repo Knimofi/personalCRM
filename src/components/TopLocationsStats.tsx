@@ -50,50 +50,54 @@ export const TopLocationsStats = ({ contacts }: TopLocationsStatsProps) => {
   }, [contacts]);
 
   return (
-    <Card className="w-80">
+    <Card className="w-96">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center space-x-2">
           <Globe className="h-4 w-4" />
           <span>Top Locations</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h4 className="text-sm font-medium mb-2 flex items-center space-x-1">
-            <MapPin className="h-3 w-3" />
-            <span>Top Cities</span>
-          </h4>
-          {topCities.length > 0 ? (
-            <div className="space-y-1">
-              {topCities.map((city, index) => (
-                <div key={city.name} className="flex justify-between text-xs">
-                  <span className="text-gray-700">{index + 1}. {city.name}</span>
-                  <span className="font-medium">{city.count}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-xs text-gray-500">No city data available</div>
-          )}
-        </div>
-        
-        <div>
-          <h4 className="text-sm font-medium mb-2 flex items-center space-x-1">
-            <Globe className="h-3 w-3" />
-            <span>Top Countries</span>
-          </h4>
-          {topCountries.length > 0 ? (
-            <div className="space-y-1">
-              {topCountries.map((country, index) => (
-                <div key={country.name} className="flex justify-between text-xs">
-                  <span className="text-gray-700">{index + 1}. {country.name}</span>
-                  <span className="font-medium">{country.count}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-xs text-gray-500">No country data available</div>
-          )}
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Top Cities */}
+          <div>
+            <h4 className="text-sm font-medium mb-2 flex items-center space-x-1">
+              <MapPin className="h-3 w-3" />
+              <span>Top Cities</span>
+            </h4>
+            {topCities.length > 0 ? (
+              <div className="space-y-1">
+                {topCities.map((city, index) => (
+                  <div key={city.name} className="flex justify-between text-xs">
+                    <span className="text-gray-700 truncate">{index + 1}. {city.name}</span>
+                    <span className="font-medium ml-2">{city.count}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500">No city data</div>
+            )}
+          </div>
+          
+          {/* Top Countries */}
+          <div>
+            <h4 className="text-sm font-medium mb-2 flex items-center space-x-1">
+              <Globe className="h-3 w-3" />
+              <span>Top Countries</span>
+            </h4>
+            {topCountries.length > 0 ? (
+              <div className="space-y-1">
+                {topCountries.map((country, index) => (
+                  <div key={country.name} className="flex justify-between text-xs">
+                    <span className="text-gray-700 truncate">{index + 1}. {country.name}</span>
+                    <span className="font-medium ml-2">{country.count}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500">No country data</div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
