@@ -1,4 +1,5 @@
 
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -49,6 +50,7 @@ serve(async (req) => {
 
     // Extract contact information using OpenAI
     if (processedText.trim()) {
+      console.log('Processing text:', processedText);
       const contactData = await extractContactInfo(processedText, messageDate);
       console.log('Extracted contact data:', contactData);
       
@@ -71,7 +73,7 @@ serve(async (req) => {
             headers: corsHeaders 
           });
         } else {
-          console.log('Contact saved successfully:', data);
+          console.log('Contact successfully saved:', data);
         }
       } else {
         console.log('No valid contact data extracted');
@@ -171,7 +173,9 @@ async function extractContactInfo(text: string, messageDate: Date) {
           }
           
           If date_met is not specified, use: "${messageDate.toISOString().split('T')[0]}"
-          Be precise and only extract information that's clearly present. If no contact information is found, return null.`
+          Be precise and only extract information that's clearly present. If no contact information is found, return null.
+          
+          IMPORTANT: Return ONLY the JSON object, no markdown formatting, no \`\`\`json blocks, just the raw JSON.`
         }],
         temperature: 0.1,
         max_tokens: 500
@@ -193,25 +197,46 @@ async function extractContactInfo(text: string, messageDate: Date) {
       return null;
     }
     
-    const extractedData = JSON.parse(content);
-    
-    // Validate that we have at least a name
-    if (!extractedData || !extractedData.name) {
+    try {
+      let extractedContent = content;
+      
+      // Remove markdown code blocks if present
+      if (extractedContent.startsWith('```json')) {
+        extractedContent = extractedContent.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (extractedContent.startsWith('```')) {
+        extractedContent = extractedContent.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+      
+      // Additional cleanup for any remaining backticks
+      extractedContent = extractedContent.replace(/^`+|`+$/g, '').trim();
+      
+      console.log('Cleaned extracted content:', extractedContent);
+      
+      const extractedData = JSON.parse(extractedContent);
+      
+      // Validate that we have at least a name
+      if (!extractedData || !extractedData.name) {
+        return null;
+      }
+      
+      // Geocode the location if provided
+      if (extractedData.location) {
+        console.log('Geocoding location:', extractedData.location);
+        const coordinates = await geocodeLocation(extractedData.location);
+        if (coordinates) {
+          extractedData.latitude = coordinates.lat;
+          extractedData.longitude = coordinates.lng;
+          console.log('Geocoded coordinates:', coordinates);
+        }
+      }
+      
+      console.log('Successfully parsed contact data:', extractedData);
+      return extractedData;
+    } catch (parseError) {
+      console.error('Failed to parse extracted contact data:', parseError);
+      console.error('Raw OpenAI response:', content);
       return null;
     }
-    
-    // Geocode the location if provided
-    if (extractedData.location) {
-      console.log('Geocoding location:', extractedData.location);
-      const coordinates = await geocodeLocation(extractedData.location);
-      if (coordinates) {
-        extractedData.latitude = coordinates.lat;
-        extractedData.longitude = coordinates.lng;
-        console.log('Geocoded coordinates:', coordinates);
-      }
-    }
-    
-    return extractedData;
   } catch (error) {
     console.error('Failed to extract contact data:', error);
     return null;
@@ -246,3 +271,4 @@ async function geocodeLocation(location: string) {
   }
   return null;
 }
+
