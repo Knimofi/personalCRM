@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Contact } from '@/types/contact';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, Mail, Instagram, Linkedin, Globe, Gift, X, AlertCircle } from 'lucide-react';
+import { MapPin, Calendar, Mail, Instagram, Linkedin, Globe, Gift, X, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMapboxToken } from '@/hooks/useMapboxToken';
 
@@ -153,6 +153,10 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
     if (diffInDays <= 30) return '#10B981'; // green-500
     if (diffInDays <= 90) return '#F59E0B'; // yellow-500
     return '#EF4444'; // red-500
+  };
+
+  const retryTokenFetch = () => {
+    window.location.reload();
   };
 
   useEffect(() => {
@@ -330,19 +334,31 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
   if (tokenLoading) {
     return (
       <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
-        <div className="text-gray-500">Loading Mapbox...</div>
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 text-blue-500 mx-auto mb-2 animate-spin" />
+          <div className="text-gray-600">Loading Mapbox...</div>
+        </div>
       </div>
     );
   }
 
-  // Show token error
+  // Show token error with retry option
   if (tokenError) {
     return (
       <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
-        <div className="text-center">
+        <div className="text-center max-w-md p-6">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <div className="text-red-600 font-medium mb-2">Mapbox Configuration Error</div>
-          <div className="text-gray-600 text-sm">{tokenError}</div>
+          <div className="text-gray-600 text-sm mb-4">{tokenError}</div>
+          <div className="space-y-2">
+            <Button onClick={retryTokenFetch} className="mr-2">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+            <div className="text-xs text-gray-500 mt-2">
+              Make sure MAPBOX_ACCESS_TOKEN is configured in Supabase Edge Function Secrets
+            </div>
+          </div>
         </div>
       </div>
     );

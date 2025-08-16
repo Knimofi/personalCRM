@@ -10,25 +10,35 @@ export const useMapboxToken = () => {
   useEffect(() => {
     const fetchToken = async () => {
       try {
-        console.log('Fetching Mapbox token...');
-        const { data, error } = await supabase.functions.invoke('get-mapbox-token');
+        console.log('Attempting to fetch Mapbox token from Edge Function...');
+        
+        const { data, error } = await supabase.functions.invoke('get-mapbox-token', {
+          body: {}
+        });
         
         if (error) {
-          console.error('Error fetching Mapbox token:', error);
-          setError(`Failed to fetch Mapbox token: ${error.message}`);
+          console.error('Supabase function invoke error:', error);
+          setError(`Edge Function Error: ${error.message || 'Unknown error'}`);
           return;
         }
 
+        console.log('Edge Function response:', data);
+
         if (data && data.token) {
-          console.log('Mapbox token fetched successfully');
+          console.log('Mapbox token received successfully');
           setToken(data.token);
+          setError(null);
+        } else if (data && data.error) {
+          console.error('Edge Function returned error:', data.error);
+          setError(data.error);
         } else {
-          console.error('No token in response:', data);
-          setError('No token received from server');
+          console.error('Unexpected response format:', data);
+          setError('Invalid response from token service');
         }
       } catch (err) {
-        console.error('Exception fetching Mapbox token:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+        console.error('Exception while fetching Mapbox token:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+        setError(`Network Error: ${errorMessage}`);
       } finally {
         setIsLoading(false);
       }
