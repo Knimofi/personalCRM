@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Header } from './Header';
 import { Navigation } from './Navigation';
 import { DatabaseView } from './DatabaseView';
@@ -8,9 +7,7 @@ import { MapView } from './MapView';
 import { useContacts } from '@/hooks/useContacts';
 import { Toaster } from '@/components/ui/toaster';
 
-const queryClient = new QueryClient();
-
-const ContactManagerContent = () => {
+export const ContactManager = () => {
   const [activeView, setActiveView] = useState<'database' | 'map'>('database');
   const { contacts, isLoading } = useContacts();
 
@@ -37,13 +34,5 @@ const ContactManagerContent = () => {
       
       <Toaster />
     </div>
-  );
-};
-
-export const ContactManager = () => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ContactManagerContent />
-    </QueryClientProvider>
   );
 };
