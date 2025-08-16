@@ -37,8 +37,10 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
-      <Toaster />
+      <div>
+        <AppContent />
+        <Toaster />
+      </div>
     </QueryClientProvider>
   );
 }
