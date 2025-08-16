@@ -10,6 +10,8 @@ export interface Contact {
   linkedin?: string;
   website?: string;
   date_met?: string;
+  birthday?: string;
+  is_hidden: boolean;
   created_at: string;
   updated_at: string;
   telegram_message_id?: string;

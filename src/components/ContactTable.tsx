@@ -12,7 +12,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Contact } from '@/types/contact';
 import { ContactDetailModal } from './ContactDetailModal';
-import { Search, Filter, Calendar, MapPin, Mail, Instagram, Linkedin, Globe } from 'lucide-react';
+import { ContactEditModal } from './ContactEditModal';
+import { ConfirmationDialog } from './ConfirmationDialog';
+import { useContacts } from '@/hooks/useContacts';
+import { 
+  Search, 
+  Calendar, 
+  MapPin, 
+  Mail, 
+  Instagram, 
+  Linkedin, 
+  Globe,
+  Edit,
+  Trash2,
+  Eye,
+  EyeOff,
+  Gift
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface ContactTableProps {
@@ -22,10 +38,18 @@ interface ContactTableProps {
 
 export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
+  const [showHidden, setShowHidden] = useState(false);
+  
+  const { updateContact, deleteContact } = useContacts();
 
   const filteredContacts = contacts.filter(contact => {
+    // Filter by hidden status
+    if (!showHidden && contact.is_hidden) return false;
+    
     const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          contact.context?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          contact.location?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -36,6 +60,7 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
   });
 
   const uniqueLocations = [...new Set(contacts.map(c => c.location).filter(Boolean))];
+  const hiddenCount = contacts.filter(c => c.is_hidden).length;
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
@@ -58,6 +83,29 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
       case 'linkedin': return contact.linkedin;
       case 'website': return contact.website;
     }
+  };
+
+  const handleToggleHidden = async (contact: Contact, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await updateContact.mutateAsync({
+      id: contact.id,
+      is_hidden: !contact.is_hidden,
+    });
+  };
+
+  const handleEdit = async (data: Partial<Contact>) => {
+    if (!editingContact) return;
+    await updateContact.mutateAsync({
+      id: editingContact.id,
+      ...data,
+    });
+    setEditingContact(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingContact) return;
+    await deleteContact.mutateAsync(deletingContact.id);
+    setDeletingContact(null);
   };
 
   const SocialLink = ({ contact, type }: { contact: Contact; type: 'email' | 'instagram' | 'linkedin' | 'website' }) => {
@@ -119,6 +167,15 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
             ))}
           </select>
         </div>
+        <Button
+          variant={showHidden ? "default" : "outline"}
+          onClick={() => setShowHidden(!showHidden)}
+          size="sm"
+          className="flex items-center space-x-2"
+        >
+          {showHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          <span>{showHidden ? 'Hide Hidden' : `Show Hidden (${hiddenCount})`}</span>
+        </Button>
         {(searchTerm || locationFilter) && (
           <Button
             variant="outline"
@@ -136,6 +193,7 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
       {/* Results Count */}
       <div className="text-sm text-gray-600 px-1">
         Showing {filteredContacts.length} of {contacts.length} contacts
+        {!showHidden && hiddenCount > 0 && ` (${hiddenCount} hidden)`}
       </div>
 
       {/* Table */}
@@ -147,20 +205,31 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
               <TableHead className="font-semibold">Location</TableHead>
               <TableHead className="font-semibold">Context</TableHead>
               <TableHead className="font-semibold">Date Met</TableHead>
+              <TableHead className="font-semibold">Birthday</TableHead>
               <TableHead className="font-semibold">Email</TableHead>
               <TableHead className="font-semibold">Instagram</TableHead>
               <TableHead className="font-semibold">LinkedIn</TableHead>
               <TableHead className="font-semibold">Website</TableHead>
+              <TableHead className="font-semibold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredContacts.map((contact) => (
               <TableRow
                 key={contact.id}
-                className="cursor-pointer hover:bg-gray-50"
+                className={`cursor-pointer hover:bg-gray-50 ${contact.is_hidden ? 'opacity-60' : ''}`}
                 onClick={() => setSelectedContact(contact)}
               >
-                <TableCell className="font-medium">{contact.name}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center space-x-2">
+                    <span>{contact.name}</span>
+                    {contact.is_hidden && (
+                      <Badge variant="secondary" className="text-xs">
+                        <EyeOff className="h-3 w-3" />
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   {contact.location ? (
                     <div className="flex items-center space-x-1">
@@ -183,6 +252,16 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
                   </div>
                 </TableCell>
                 <TableCell>
+                  {contact.birthday ? (
+                    <div className="flex items-center space-x-1">
+                      <Gift className="h-3 w-3 text-gray-400" />
+                      <span className="text-sm">{formatDate(contact.birthday)}</span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
                   <SocialLink contact={contact} type="email" />
                 </TableCell>
                 <TableCell>
@@ -193,6 +272,40 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
                 </TableCell>
                 <TableCell>
                   <SocialLink contact={contact} type="website" />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center space-x-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleToggleHidden(contact, e)}
+                      className="h-8 w-8 p-0"
+                    >
+                      {contact.is_hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingContact(contact);
+                      }}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeletingContact(contact);
+                      }}
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -211,6 +324,28 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
           contact={selectedContact}
           isOpen={!!selectedContact}
           onClose={() => setSelectedContact(null)}
+        />
+      )}
+
+      {editingContact && (
+        <ContactEditModal
+          contact={editingContact}
+          isOpen={!!editingContact}
+          onClose={() => setEditingContact(null)}
+          onSave={handleEdit}
+          isLoading={updateContact.isPending}
+        />
+      )}
+
+      {deletingContact && (
+        <ConfirmationDialog
+          isOpen={!!deletingContact}
+          onClose={() => setDeletingContact(null)}
+          onConfirm={handleDelete}
+          title="Delete Contact"
+          description={`Are you sure you want to delete ${deletingContact.name}? This action cannot be undone.`}
+          confirmText="Delete"
+          isDestructive
         />
       )}
     </div>

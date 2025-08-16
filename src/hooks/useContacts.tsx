@@ -93,7 +93,7 @@ export const useContacts = () => {
   }, [queryClient, toast]);
 
   const createContact = useMutation({
-    mutationFn: async (contact: Omit<Contact, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (contact: Omit<Contact, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'is_hidden'>) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -107,6 +107,7 @@ export const useContacts = () => {
         .insert({
           ...contact,
           user_id: user.id,
+          is_hidden: false,
         })
         .select()
         .single();

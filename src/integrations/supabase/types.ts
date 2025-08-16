@@ -16,12 +16,14 @@ export type Database = {
     Tables: {
       contacts: {
         Row: {
+          birthday: string | null
           context: string | null
           created_at: string
           date_met: string | null
           email: string | null
           id: string
           instagram: string | null
+          is_hidden: boolean
           latitude: number | null
           linkedin: string | null
           location: string | null
@@ -34,12 +36,14 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          birthday?: string | null
           context?: string | null
           created_at?: string
           date_met?: string | null
           email?: string | null
           id?: string
           instagram?: string | null
+          is_hidden?: boolean
           latitude?: number | null
           linkedin?: string | null
           location?: string | null
@@ -52,12 +56,14 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          birthday?: string | null
           context?: string | null
           created_at?: string
           date_met?: string | null
           email?: string | null
           id?: string
           instagram?: string | null
+          is_hidden?: boolean
           latitude?: number | null
           linkedin?: string | null
           location?: string | null
