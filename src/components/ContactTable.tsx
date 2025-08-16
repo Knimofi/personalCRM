@@ -27,7 +27,9 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  Gift
+  Gift,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -36,6 +38,9 @@ interface ContactTableProps {
   isLoading: boolean;
 }
 
+type SortField = 'name' | 'location' | 'context' | 'date_met' | 'birthday' | 'email' | 'instagram' | 'linkedin' | 'website';
+type SortDirection = 'asc' | 'desc';
+
 export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -43,8 +48,52 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [showHidden, setShowHidden] = useState(false);
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   
   const { updateContact, deleteContact } = useContacts();
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Double click - reverse direction
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Single click - new field, ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortContacts = (contactsToSort: Contact[]) => {
+    if (!sortField) return contactsToSort;
+
+    return [...contactsToSort].sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+
+      // Handle null/undefined values
+      if (aValue === null || aValue === undefined) aValue = '';
+      if (bValue === null || bValue === undefined) bValue = '';
+
+      // Convert to strings for comparison
+      const aStr = String(aValue).toLowerCase();
+      const bStr = String(bValue).toLowerCase();
+
+      let comparison = 0;
+
+      // Special handling for dates
+      if (sortField === 'date_met' || sortField === 'birthday') {
+        const aDate = aValue ? new Date(aValue as string) : new Date(0);
+        const bDate = bValue ? new Date(bValue as string) : new Date(0);
+        comparison = aDate.getTime() - bDate.getTime();
+      } else {
+        // String comparison
+        comparison = aStr.localeCompare(bStr);
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  };
 
   const filteredContacts = contacts.filter(contact => {
     // Filter by hidden status
@@ -58,6 +107,8 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
     
     return matchesSearch && matchesLocation;
   });
+
+  const sortedContacts = sortContacts(filteredContacts);
 
   const uniqueLocations = [...new Set(contacts.map(c => c.location).filter(Boolean))];
   const hiddenCount = contacts.filter(c => c.is_hidden).length;
@@ -107,6 +158,22 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
     await deleteContact.mutateAsync(deletingContact.id);
     setDeletingContact(null);
   };
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead 
+      className="font-semibold cursor-pointer hover:bg-gray-50 select-none"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center space-x-1">
+        <span>{children}</span>
+        {sortField === field && (
+          sortDirection === 'asc' ? 
+            <ChevronUp className="h-4 w-4" /> : 
+            <ChevronDown className="h-4 w-4" />
+        )}
+      </div>
+    </TableHead>
+  );
 
   const SocialLink = ({ contact, type }: { contact: Contact; type: 'email' | 'instagram' | 'linkedin' | 'website' }) => {
     const link = getSocialLink(contact, type);
@@ -192,7 +259,7 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
 
       {/* Results Count */}
       <div className="text-sm text-gray-600 px-1">
-        Showing {filteredContacts.length} of {contacts.length} contacts
+        Showing {sortedContacts.length} of {contacts.length} contacts
         {!showHidden && hiddenCount > 0 && ` (${hiddenCount} hidden)`}
       </div>
 
@@ -201,20 +268,20 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="font-semibold">Name</TableHead>
-              <TableHead className="font-semibold">Location</TableHead>
-              <TableHead className="font-semibold">Context</TableHead>
-              <TableHead className="font-semibold">Date Met</TableHead>
-              <TableHead className="font-semibold">Birthday</TableHead>
-              <TableHead className="font-semibold">Email</TableHead>
-              <TableHead className="font-semibold">Instagram</TableHead>
-              <TableHead className="font-semibold">LinkedIn</TableHead>
-              <TableHead className="font-semibold">Website</TableHead>
+              <SortableHeader field="name">Name</SortableHeader>
+              <SortableHeader field="location">Location</SortableHeader>
+              <SortableHeader field="context">Context</SortableHeader>
+              <SortableHeader field="date_met">Date Met</SortableHeader>
+              <SortableHeader field="birthday">Birthday</SortableHeader>
+              <SortableHeader field="email">Email</SortableHeader>
+              <SortableHeader field="instagram">Instagram</SortableHeader>
+              <SortableHeader field="linkedin">LinkedIn</SortableHeader>
+              <SortableHeader field="website">Website</SortableHeader>
               <TableHead className="font-semibold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredContacts.map((contact) => (
+            {sortedContacts.map((contact) => (
               <TableRow
                 key={contact.id}
                 className={`cursor-pointer hover:bg-gray-50 ${contact.is_hidden ? 'opacity-60' : ''}`}
@@ -313,7 +380,7 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
         </Table>
       </div>
 
-      {filteredContacts.length === 0 && (
+      {sortedContacts.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           {contacts.length === 0 ? 'No contacts yet.' : 'No contacts match your filters.'}
         </div>

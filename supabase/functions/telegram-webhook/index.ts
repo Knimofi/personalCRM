@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -165,16 +166,20 @@ async function extractContactInfo(text: string, messageDate: Date) {
           {
             "name": "Full name",
             "location": "City, Country",
-            "context": "How/where we met",
+            "context": "Brief description of how/where we met, common connections, or the event/environment - DO NOT repeat the entire message",
             "email": "email@domain.com",
             "instagram": "username_only",
             "linkedin": "profile_url_or_username",
             "website": "https://website.com",
-            "date_met": "YYYY-MM-DD"
+            "date_met": "YYYY-MM-DD",
+            "birthday": "YYYY-MM-DD"
           }
           
-          If date_met is not specified, use: "${messageDate.toISOString().split('T')[0]}"
-          Be precise and only extract information that's clearly present. If no contact information is found, return null.
+          IMPORTANT INSTRUCTIONS:
+          - For "context": Extract only the relevant relationship context like "Met at conference", "Friend of Sarah", "Gym buddy", "Coworker at XYZ". Keep it concise and meaningful.
+          - For "birthday": Look for birth dates, birthdays, or age mentions and convert to YYYY-MM-DD format. If only age is mentioned, estimate birth year.
+          - If date_met is not specified, use: "${messageDate.toISOString().split('T')[0]}"
+          - Be precise and only extract information that's clearly present. If no contact information is found, return null.
           
           IMPORTANT: Return ONLY the JSON object, no markdown formatting, no \`\`\`json blocks, just the raw JSON.`
         }],
