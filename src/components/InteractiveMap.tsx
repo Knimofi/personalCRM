@@ -317,7 +317,7 @@ export const InteractiveMap = ({ contacts }: InteractiveMapProps) => {
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-            <span>Old (>90 days)</span>
+            <span>Old (&gt;90 days)</span>
           </div>
         </div>
       </div>
