@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/AuthForm';
@@ -6,7 +7,14 @@ import { ContactManager } from '@/components/ContactManager';
 import { Toaster } from '@/components/ui/toaster';
 import './App.css';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function AppContent() {
   const { user, loading } = useAuth();
