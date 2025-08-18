@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,19 +31,43 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Contact } from '@/types/contact';
 import { ImageUpload } from './ImageUpload';
+import { validateEmail, validateUrl, validatePhoneNumber, sanitizeContactName, validateDateString } from '@/utils/security';
 
 const contactSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  phone: z.string().optional(),
-  location_met: z.string().optional(),
-  location_from: z.string().optional(),
-  context: z.string().optional(),
-  email: z.string().email('Invalid email format').optional().or(z.literal('')),
-  instagram: z.string().optional(),
-  linkedin: z.string().url('Invalid LinkedIn URL').optional().or(z.literal('')),
-  website: z.string().url('Invalid website URL').optional().or(z.literal('')),
-  date_met: z.string().optional(),
-  birthday: z.string().optional(),
+  name: z.string()
+    .min(1, 'Name is required')
+    .max(100, 'Name must be less than 100 characters')
+    .refine((name) => sanitizeContactName(name).length > 0, 'Name contains invalid characters'),
+  phone: z.string()
+    .optional()
+    .refine((phone) => !phone || validatePhoneNumber(phone), 'Invalid phone number format'),
+  location_met: z.string()
+    .max(200, 'Location must be less than 200 characters')
+    .optional(),
+  location_from: z.string()
+    .max(200, 'Location must be less than 200 characters')
+    .optional(),
+  context: z.string()
+    .max(500, 'Context must be less than 500 characters')
+    .optional(),
+  email: z.string()
+    .optional()
+    .refine((email) => !email || email === '' || validateEmail(email), 'Invalid email format'),
+  instagram: z.string()
+    .max(100, 'Instagram handle must be less than 100 characters')
+    .optional(),
+  linkedin: z.string()
+    .optional()
+    .refine((url) => !url || url === '' || validateUrl(url), 'Invalid LinkedIn URL'),
+  website: z.string()
+    .optional()
+    .refine((url) => !url || url === '' || validateUrl(url), 'Invalid website URL'),
+  date_met: z.string()
+    .optional()
+    .refine((date) => !date || validateDateString(date), 'Invalid date format'),
+  birthday: z.string()
+    .optional()
+    .refine((date) => !date || validateDateString(date), 'Invalid date format'),
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
@@ -114,24 +137,25 @@ export const ContactEditModal = ({
     
     console.log('Saving contact with profile image URL:', profileImageUrl);
     
-    const updatedData = {
+    // Sanitize all text inputs
+    const sanitizedData = {
       ...data,
-      // Convert empty strings to undefined for optional fields
-      phone: data.phone || undefined,
-      location_met: data.location_met || undefined,
-      location_from: data.location_from || undefined,
-      context: data.context || undefined,
-      email: data.email || undefined,
-      instagram: data.instagram || undefined,
-      linkedin: data.linkedin || undefined,
-      website: data.website || undefined,
+      name: sanitizeContactName(data.name),
+      phone: data.phone?.trim() || undefined,
+      location_met: data.location_met?.trim() || undefined,
+      location_from: data.location_from?.trim() || undefined,
+      context: data.context?.trim() || undefined,
+      email: data.email?.toLowerCase().trim() || undefined,
+      instagram: data.instagram?.trim() || undefined,
+      linkedin: data.linkedin?.trim() || undefined,
+      website: data.website?.trim() || undefined,
       date_met: data.date_met || undefined,
       birthday: data.birthday || undefined,
       profile_picture_url: profileImageUrl || undefined,
     };
 
-    console.log('Final data being saved:', updatedData);
-    await onSave(updatedData);
+    console.log('Final sanitized data being saved:', sanitizedData);
+    await onSave(sanitizedData);
   };
 
   return (
@@ -162,7 +186,7 @@ export const ContactEditModal = ({
                   <FormItem>
                     <FormLabel>Name *</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} maxLength={100} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -176,7 +200,7 @@ export const ContactEditModal = ({
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input {...field} type="tel" placeholder="+1 (555) 123-4567" />
+                      <Input {...field} type="tel" placeholder="+1 (555) 123-4567" maxLength={20} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -193,7 +217,7 @@ export const ContactEditModal = ({
                   <FormItem>
                     <FormLabel>Lives In</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="City, Country" />
+                      <Input {...field} placeholder="City, Country" maxLength={200} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -207,7 +231,7 @@ export const ContactEditModal = ({
                   <FormItem>
                     <FormLabel>Met At</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="City, Country" />
+                      <Input {...field} placeholder="City, Country" maxLength={200} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -222,7 +246,7 @@ export const ContactEditModal = ({
                 <FormItem>
                   <FormLabel>Highlights</FormLabel>
                   <FormControl>
-                    <Textarea {...field} rows={3} placeholder="Key highlights, important details, things to remember..." />
+                    <Textarea {...field} rows={3} placeholder="Key highlights, important details, things to remember..." maxLength={500} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -238,7 +262,7 @@ export const ContactEditModal = ({
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input {...field} type="email" />
+                      <Input {...field} type="email" maxLength={254} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -252,7 +276,7 @@ export const ContactEditModal = ({
                   <FormItem>
                     <FormLabel>Instagram</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="@username" />
+                      <Input {...field} placeholder="@username" maxLength={100} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -268,7 +292,7 @@ export const ContactEditModal = ({
                   <FormItem>
                     <FormLabel>LinkedIn</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="https://linkedin.com/in/..." />
+                      <Input {...field} placeholder="https://linkedin.com/in/..." maxLength={2048} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -282,7 +306,7 @@ export const ContactEditModal = ({
                   <FormItem>
                     <FormLabel>Website</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="https://..." />
+                      <Input {...field} placeholder="https://..." maxLength={2048} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

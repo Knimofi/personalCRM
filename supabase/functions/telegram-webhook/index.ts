@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -44,11 +43,101 @@ interface ContactInfo {
   location_from_longitude?: number;
 }
 
+// Input validation and sanitization functions
+function sanitizeText(input: string): string {
+  if (!input || typeof input !== 'string') return '';
+  // Remove potential XSS and limit length
+  return input.trim().slice(0, 1000).replace(/<[^>]*>/g, '');
+}
+
+function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+function validateUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return url.startsWith('http://') || url.startsWith('https://');
+  } catch {
+    return false;
+  }
+}
+
+function validateDate(dateString: string): boolean {
+  const date = new Date(dateString);
+  return !isNaN(date.getTime()) && dateString.match(/^\d{4}-\d{2}-\d{2}$/);
+}
+
+function sanitizeContactInfo(contactInfo: ContactInfo): ContactInfo {
+  const sanitized: ContactInfo = {
+    name: sanitizeText(contactInfo.name),
+  };
+
+  // Sanitize optional fields
+  if (contactInfo.phone) {
+    sanitized.phone = sanitizeText(contactInfo.phone).slice(0, 50);
+  }
+  if (contactInfo.location_met) {
+    sanitized.location_met = sanitizeText(contactInfo.location_met).slice(0, 200);
+  }
+  if (contactInfo.location_from) {
+    sanitized.location_from = sanitizeText(contactInfo.location_from).slice(0, 200);
+  }
+  if (contactInfo.context) {
+    sanitized.context = sanitizeText(contactInfo.context).slice(0, 500);
+  }
+  if (contactInfo.email && validateEmail(contactInfo.email)) {
+    sanitized.email = contactInfo.email.toLowerCase().trim();
+  }
+  if (contactInfo.instagram) {
+    sanitized.instagram = sanitizeText(contactInfo.instagram).slice(0, 100);
+  }
+  if (contactInfo.linkedin && validateUrl(contactInfo.linkedin)) {
+    sanitized.linkedin = contactInfo.linkedin.trim();
+  }
+  if (contactInfo.website && validateUrl(contactInfo.website)) {
+    sanitized.website = contactInfo.website.trim();
+  }
+  if (contactInfo.date_met && validateDate(contactInfo.date_met)) {
+    sanitized.date_met = contactInfo.date_met;
+  }
+  if (contactInfo.birthday && validateDate(contactInfo.birthday)) {
+    sanitized.birthday = contactInfo.birthday;
+  }
+
+  // Validate coordinates
+  if (typeof contactInfo.location_met_latitude === 'number' && 
+      contactInfo.location_met_latitude >= -90 && contactInfo.location_met_latitude <= 90) {
+    sanitized.location_met_latitude = contactInfo.location_met_latitude;
+  }
+  if (typeof contactInfo.location_met_longitude === 'number' && 
+      contactInfo.location_met_longitude >= -180 && contactInfo.location_met_longitude <= 180) {
+    sanitized.location_met_longitude = contactInfo.location_met_longitude;
+  }
+  if (typeof contactInfo.location_from_latitude === 'number' && 
+      contactInfo.location_from_latitude >= -90 && contactInfo.location_from_latitude <= 90) {
+    sanitized.location_from_latitude = contactInfo.location_from_latitude;
+  }
+  if (typeof contactInfo.location_from_longitude === 'number' && 
+      contactInfo.location_from_longitude >= -180 && contactInfo.location_from_longitude <= 180) {
+    sanitized.location_from_longitude = contactInfo.location_from_longitude;
+  }
+
+  return sanitized;
+}
+
 async function extractContactInfo(message: string): Promise<ContactInfo | null> {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
   
   if (!openaiApiKey) {
     console.error('OpenAI API key not found');
+    return null;
+  }
+
+  // Basic input validation
+  if (!message || message.length > 5000) {
+    console.error('Invalid message length');
     return null;
   }
 
@@ -103,7 +192,7 @@ Examples:
           },
           {
             role: 'user',
-            content: message
+            content: sanitizeText(message)
           }
         ],
         temperature: 0.1,
@@ -130,12 +219,13 @@ Examples:
       console.log('Extracted contact info:', contactInfo);
       
       // Validate required name field
-      if (!contactInfo.name || typeof contactInfo.name !== 'string') {
+      if (!contactInfo.name || typeof contactInfo.name !== 'string' || contactInfo.name.trim().length === 0) {
         console.error('Invalid or missing name in extracted info');
         return null;
       }
 
-      return contactInfo;
+      // Sanitize the extracted contact info
+      return sanitizeContactInfo(contactInfo);
     } catch (parseError) {
       console.error('Failed to parse OpenAI JSON response:', parseError, 'Content:', content);
       return null;
@@ -218,6 +308,12 @@ serve(async (req) => {
     const message = update.message;
     const messageText = message.text;
     
+    // Basic input validation
+    if (messageText.length > 5000) {
+      console.log('Message too long, ignoring');
+      return new Response('OK', { headers: corsHeaders });
+    }
+    
     console.log(`Processing message: "${messageText}"`);
 
     // Extract contact information using OpenAI
@@ -250,7 +346,9 @@ serve(async (req) => {
       .map(sentence => `• ${sentence}`)
       .join('\n');
 
-    // Prepare contact data for database insertion
+    // SECURITY FIX: For now, telegram contacts still use the special user ID
+    // TODO: Implement proper user mapping for telegram contacts
+    // This requires associating telegram users with app users
     const contactData = {
       user_id: '00000000-0000-0000-0000-000000000001', // Special user ID for Telegram contacts
       name: contactInfo.name,
@@ -265,7 +363,7 @@ serve(async (req) => {
       date_met: contactInfo.date_met || null,
       birthday: contactInfo.birthday || null,
       telegram_message_id: message.message_id.toString(),
-      raw_content: formattedMessage,
+      raw_content: sanitizeText(formattedMessage),
       is_hidden: false,
       location_met_latitude: locationMetCoords?.latitude || null,
       location_met_longitude: locationMetCoords?.longitude || null,
