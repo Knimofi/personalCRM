@@ -1,26 +1,23 @@
-
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut, Users, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
-
 export const Header = () => {
-  const { signOut, user } = useAuth();
+  const {
+    signOut,
+    user
+  } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-
   const handleSignOut = async () => {
     await signOut();
   };
-
   const handleSettingsClick = () => {
     navigate('/settings');
   };
-
   if (isMobile) {
-    return (
-      <header className="bg-white border-b border-gray-200 px-4 py-3 block md:hidden">
+    return <header className="bg-white border-b border-gray-200 px-4 py-3 block md:hidden">
         <div className="max-w-7xl mx-auto">
           {/* First line: Icon and Title */}
           <div className="flex items-center space-x-3 mb-2">
@@ -30,7 +27,7 @@ export const Header = () => {
           
           {/* Second line: Email and Actions */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-gray-600 truncate flex-1 min-w-0">{user?.email}</span>
+            <span className="text-xs text-gray-600 truncate flex-1 min-w-0 text-left">{user?.email}</span>
             <div className="flex items-center space-x-2 flex-shrink-0">
               <Button variant="outline" onClick={handleSettingsClick} size="sm" className="h-8 w-8 p-0">
                 <Settings className="h-4 w-4" />
@@ -41,12 +38,9 @@ export const Header = () => {
             </div>
           </div>
         </div>
-      </header>
-    );
+      </header>;
   }
-
-  return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 hidden md:block">
+  return <header className="bg-white border-b border-gray-200 px-6 py-4 hidden md:block">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center space-x-3">
           <Users className="h-8 w-8 text-blue-600" />
@@ -64,6 +58,5 @@ export const Header = () => {
           </Button>
         </div>
       </div>
-    </header>
-  );
+    </header>;
 };
