@@ -1,13 +1,19 @@
 
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, Users } from 'lucide-react';
+import { LogOut, Users, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export const Header = () => {
   const { signOut, user } = useAuth();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleSettingsClick = () => {
+    navigate('/settings');
   };
 
   return (
@@ -19,6 +25,10 @@ export const Header = () => {
         </div>
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-600">{user?.email}</span>
+          <Button variant="outline" onClick={handleSettingsClick} size="sm">
+            <Settings className="h-4 w-4 mr-2" />
+            Settings
+          </Button>
           <Button variant="outline" onClick={handleSignOut} size="sm">
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out

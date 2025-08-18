@@ -2,17 +2,26 @@
 import { ContactTable } from './ContactTable';
 import { ExportButton } from './ExportButton';
 import { useContacts } from '@/hooks/useContacts';
+import { getNextBirthday, formatBirthdayDate } from '@/utils/birthdayUtils';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const DatabaseView = () => {
   const { contacts, isLoading, error } = useContacts();
+  const nextBirthdayContact = getNextBirthday(contacts);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-6">
       <div className="mb-6">
         <div className="flex justify-between items-start mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Contact Database</h2>
+          <div className="text-center flex-1">
+            {nextBirthdayContact && (
+              <div className="text-xs text-gray-500 mb-1" style={{ fontSize: '9px' }}>
+                next birthday: {nextBirthdayContact.name} ({formatBirthdayDate(nextBirthdayContact.birthday!)})
+              </div>
+            )}
+            <h2 className="text-2xl font-bold text-gray-900">Contact Database</h2>
+          </div>
           <ExportButton contacts={contacts} />
         </div>
         

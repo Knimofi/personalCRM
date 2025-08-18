@@ -24,7 +24,6 @@ export type Database = {
           id: string
           instagram: string | null
           is_hidden: boolean
-          latitude: number | null
           linkedin: string | null
           location: string | null
           location_from: string | null
@@ -33,7 +32,6 @@ export type Database = {
           location_met: string | null
           location_met_latitude: number | null
           location_met_longitude: number | null
-          longitude: number | null
           name: string
           phone: string | null
           profile_picture_url: string | null
@@ -52,7 +50,6 @@ export type Database = {
           id?: string
           instagram?: string | null
           is_hidden?: boolean
-          latitude?: number | null
           linkedin?: string | null
           location?: string | null
           location_from?: string | null
@@ -61,7 +58,6 @@ export type Database = {
           location_met?: string | null
           location_met_latitude?: number | null
           location_met_longitude?: number | null
-          longitude?: number | null
           name: string
           phone?: string | null
           profile_picture_url?: string | null
@@ -80,7 +76,6 @@ export type Database = {
           id?: string
           instagram?: string | null
           is_hidden?: boolean
-          latitude?: number | null
           linkedin?: string | null
           location?: string | null
           location_from?: string | null
@@ -89,7 +84,6 @@ export type Database = {
           location_met?: string | null
           location_met_latitude?: number | null
           location_met_longitude?: number | null
-          longitude?: number | null
           name?: string
           phone?: string | null
           profile_picture_url?: string | null
@@ -98,6 +92,30 @@ export type Database = {
           updated_at?: string
           user_id?: string
           website?: string | null
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          birthday_reminders_enabled: boolean
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          birthday_reminders_enabled?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          birthday_reminders_enabled?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
