@@ -27,8 +27,16 @@ export type Database = {
           latitude: number | null
           linkedin: string | null
           location: string | null
+          location_from: string | null
+          location_from_latitude: number | null
+          location_from_longitude: number | null
+          location_met: string | null
+          location_met_latitude: number | null
+          location_met_longitude: number | null
           longitude: number | null
           name: string
+          phone: string | null
+          profile_picture_url: string | null
           raw_content: string | null
           telegram_message_id: string | null
           updated_at: string
@@ -47,8 +55,16 @@ export type Database = {
           latitude?: number | null
           linkedin?: string | null
           location?: string | null
+          location_from?: string | null
+          location_from_latitude?: number | null
+          location_from_longitude?: number | null
+          location_met?: string | null
+          location_met_latitude?: number | null
+          location_met_longitude?: number | null
           longitude?: number | null
           name: string
+          phone?: string | null
+          profile_picture_url?: string | null
           raw_content?: string | null
           telegram_message_id?: string | null
           updated_at?: string
@@ -67,8 +83,16 @@ export type Database = {
           latitude?: number | null
           linkedin?: string | null
           location?: string | null
+          location_from?: string | null
+          location_from_latitude?: number | null
+          location_from_longitude?: number | null
+          location_met?: string | null
+          location_met_latitude?: number | null
+          location_met_longitude?: number | null
           longitude?: number | null
           name?: string
+          phone?: string | null
+          profile_picture_url?: string | null
           raw_content?: string | null
           telegram_message_id?: string | null
           updated_at?: string

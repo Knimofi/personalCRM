@@ -165,8 +165,10 @@ async function extractContactInfo(text: string, messageDate: Date) {
           Return ONLY a JSON object with these fields (use null if not found):
           {
             "name": "Full name",
-            "location": "City, Country",
-            "context": "Brief description of how/where we met, common connections, or the event/environment - DO NOT repeat the entire message",
+            "phone": "Phone number with country code if mentioned",
+            "location_from": "Where they live/are from (City, Country)",
+            "location_met": "Where we physically met (specific venue, event, or general location)",
+            "context": "Key professional and personal details in bullet format",
             "email": "email@domain.com",
             "instagram": "username_only",
             "linkedin": "profile_url_or_username",
@@ -175,16 +177,43 @@ async function extractContactInfo(text: string, messageDate: Date) {
             "birthday": "YYYY-MM-DD"
           }
           
-          IMPORTANT INSTRUCTIONS:
-          - For "context": Extract only the relevant relationship context like "Met at conference", "Friend of Sarah", "Gym buddy", "Coworker at XYZ". Keep it concise and meaningful.
-          - For "birthday": Look for birth dates, birthdays, or age mentions and convert to YYYY-MM-DD format. If only age is mentioned, estimate birth year.
-          - If date_met is not specified, use: "${messageDate.toISOString().split('T')[0]}"
-          - Be precise and only extract information that's clearly present. If no contact information is found, return null.
+          CRITICAL PARSING INSTRUCTIONS:
           
-          IMPORTANT: Return ONLY the JSON object, no markdown formatting, no \`\`\`json blocks, just the raw JSON.`
+          **Location Parsing:**
+          - "location_from": Where they LIVE or are FROM (residence/origin) - use for map display
+          - "location_met": Where we physically MET (venue, event, conference, etc.)
+          - Distinguish carefully: "I met John from London at the NYC conference" → location_from: "London, UK", location_met: "NYC conference"
+          
+          **Context Formatting:**
+          Structure the context as organized bullet points including:
+          • Job title and company (if mentioned) - ALWAYS include this prominently
+          • Industry or field of work
+          • Mutual connections or referrals
+          • Shared interests or topics discussed
+          • Any notable personal details
+          • Reason for meeting or event context
+          
+          **Contact Details:**
+          - Extract phone numbers in international format when possible
+          - For social media, extract just the username (no @ symbol for instagram)
+          - LinkedIn can be full URL or just username
+          
+          **Date Handling:**
+          - If date_met not specified, use: "${messageDate.toISOString().split('T')[0]}"
+          - For birthday: look for birth dates, ages, or birthday mentions
+          
+          **Example Context Format:**
+          • Senior Software Engineer at Google
+          • Works in AI/Machine Learning
+          • Referred by Sarah Johnson
+          • Interested in startup investing
+          • Marathon runner, lives in San Francisco
+          • Met at TechCrunch Disrupt networking event
+          
+          IMPORTANT: Return ONLY the JSON object, no markdown formatting, no backticks, just raw JSON.`
         }],
         temperature: 0.1,
-        max_tokens: 500
+        max_tokens: 600
       }),
     });
 
@@ -225,14 +254,24 @@ async function extractContactInfo(text: string, messageDate: Date) {
         return null;
       }
       
-      // Geocode the location if provided
-      if (extractedData.location) {
-        console.log('Geocoding location:', extractedData.location);
-        const coordinates = await geocodeLocation(extractedData.location);
+      // Geocode both locations if provided
+      if (extractedData.location_from) {
+        console.log('Geocoding residence location:', extractedData.location_from);
+        const coordinates = await geocodeLocation(extractedData.location_from);
         if (coordinates) {
-          extractedData.latitude = coordinates.lat;
-          extractedData.longitude = coordinates.lng;
-          console.log('Geocoded coordinates:', coordinates);
+          extractedData.location_from_latitude = coordinates.lat;
+          extractedData.location_from_longitude = coordinates.lng;
+          console.log('Geocoded residence coordinates:', coordinates);
+        }
+      }
+      
+      if (extractedData.location_met) {
+        console.log('Geocoding meeting location:', extractedData.location_met);
+        const coordinates = await geocodeLocation(extractedData.location_met);
+        if (coordinates) {
+          extractedData.location_met_latitude = coordinates.lat;
+          extractedData.location_met_longitude = coordinates.lng;
+          console.log('Geocoded meeting coordinates:', coordinates);
         }
       }
       

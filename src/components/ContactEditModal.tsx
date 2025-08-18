@@ -31,10 +31,13 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Contact } from '@/types/contact';
+import { ImageUpload } from './ImageUpload';
 
 const contactSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  location: z.string().optional(),
+  phone: z.string().optional(),
+  location_met: z.string().optional(),
+  location_from: z.string().optional(),
   context: z.string().optional(),
   email: z.string().email('Invalid email format').optional().or(z.literal('')),
   instagram: z.string().optional(),
@@ -63,12 +66,15 @@ export const ContactEditModal = ({
 }: ContactEditModalProps) => {
   const [dateMetOpen, setDateMetOpen] = useState(false);
   const [birthdayOpen, setBirthdayOpen] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
       name: '',
-      location: '',
+      phone: '',
+      location_met: '',
+      location_from: '',
       context: '',
       email: '',
       instagram: '',
@@ -83,7 +89,9 @@ export const ContactEditModal = ({
     if (contact && isOpen) {
       form.reset({
         name: contact.name || '',
-        location: contact.location || '',
+        phone: contact.phone || '',
+        location_met: contact.location_met || '',
+        location_from: contact.location_from || '',
         context: contact.context || '',
         email: contact.email || '',
         instagram: contact.instagram || '',
@@ -92,6 +100,7 @@ export const ContactEditModal = ({
         date_met: contact.date_met || '',
         birthday: contact.birthday || '',
       });
+      setProfileImageUrl(contact.profile_picture_url || null);
     }
   }, [contact, isOpen, form]);
 
@@ -101,7 +110,9 @@ export const ContactEditModal = ({
     const updatedData = {
       ...data,
       // Convert empty strings to undefined for optional fields
-      location: data.location || undefined,
+      phone: data.phone || undefined,
+      location_met: data.location_met || undefined,
+      location_from: data.location_from || undefined,
       context: data.context || undefined,
       email: data.email || undefined,
       instagram: data.instagram || undefined,
@@ -109,6 +120,7 @@ export const ContactEditModal = ({
       website: data.website || undefined,
       date_met: data.date_met || undefined,
       birthday: data.birthday || undefined,
+      profile_picture_url: profileImageUrl || undefined,
     };
 
     await onSave(updatedData);
@@ -123,7 +135,18 @@ export const ContactEditModal = ({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Profile Picture Section */}
+            <div className="flex justify-center">
+              <ImageUpload
+                contactName={form.watch('name')}
+                currentImageUrl={profileImageUrl}
+                onImageUpload={setProfileImageUrl}
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -141,12 +164,43 @@ export const ContactEditModal = ({
 
               <FormField
                 control={form.control}
-                name="location"
+                name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location</FormLabel>
+                    <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} type="tel" placeholder="+1 (555) 123-4567" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Location Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="location_from"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lives In</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="City, Country" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="location_met"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Met At</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Conference, Coffee shop, etc." />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -161,13 +215,14 @@ export const ContactEditModal = ({
                 <FormItem>
                   <FormLabel>Context</FormLabel>
                   <FormControl>
-                    <Textarea {...field} rows={3} />
+                    <Textarea {...field} rows={3} placeholder="Job title, mutual connections, notes about meeting..." />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
+            {/* Contact Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -228,6 +283,7 @@ export const ContactEditModal = ({
               />
             </div>
 
+            {/* Date Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}

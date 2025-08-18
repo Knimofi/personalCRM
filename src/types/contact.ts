@@ -3,7 +3,9 @@ export interface Contact {
   id: string;
   user_id: string;
   name: string;
-  location?: string;
+  phone?: string;
+  location_met?: string;
+  location_from?: string;
   context?: string;
   email?: string;
   instagram?: string;
@@ -16,6 +18,9 @@ export interface Contact {
   updated_at: string;
   telegram_message_id?: string;
   raw_content?: string;
-  latitude?: number;
-  longitude?: number;
+  location_met_latitude?: number;
+  location_met_longitude?: number;
+  location_from_latitude?: number;
+  location_from_longitude?: number;
+  profile_picture_url?: string;
 }

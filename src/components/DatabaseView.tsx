@@ -1,5 +1,6 @@
 
 import { ContactTable } from './ContactTable';
+import { ExportButton } from './ExportButton';
 import { useContacts } from '@/hooks/useContacts';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -10,7 +11,10 @@ export const DatabaseView = () => {
   return (
     <div className="max-w-7xl mx-auto px-6 py-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Contact Database</h2>
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="text-2xl font-bold text-gray-900">Contact Database</h2>
+          <ExportButton contacts={contacts} />
+        </div>
         
         {/* Status */}
         <div className="text-sm text-gray-500">

@@ -16,7 +16,10 @@ export const MapView = ({ contacts, isLoading }: MapViewProps) => {
   const mapRef = useRef<InteractiveMapRef>(null);
   
   const contactsWithCoordinates = useMemo(() => {
-    return contacts.filter(contact => contact.latitude && contact.longitude);
+    return contacts.filter(contact => 
+      contact.location_from_latitude && 
+      contact.location_from_longitude
+    );
   }, [contacts]);
 
   const handleLocationSelect = (latitude: number, longitude: number) => {
@@ -50,7 +53,7 @@ export const MapView = ({ contacts, isLoading }: MapViewProps) => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Globe className="h-5 w-5" />
-            <span>Interactive World Map</span>
+            <span>Where People Live - Interactive World Map</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -61,10 +64,14 @@ export const MapView = ({ contacts, isLoading }: MapViewProps) => {
               <Globe className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-600 mb-2">No Location Data</h3>
               <p className="text-gray-500 mb-4">
-                Contacts need geographic coordinates to appear on the map. 
-                Add locations to your contacts to see them here.
+                Contacts need residential location data to appear on the map. 
+                Add "Lives in" locations to your contacts to see them here.
               </p>
-              <div className="flex justify-center space-x-4 text-sm">
+              <div className="text-sm text-gray-500">
+                <p className="mb-2">This map shows where your contacts currently live, not where you met them.</p>
+                <p>Meeting locations are visible in individual contact details.</p>
+              </div>
+              <div className="flex justify-center space-x-4 text-sm mt-4">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                   <span>Recent (≤30 days)</span>
