@@ -20,10 +20,10 @@ export const TopLocationsStats = ({ contacts, locationType }: TopLocationsStatsP
     return acc;
   }, {} as Record<string, number>);
 
-  // Get top 5 locations
+  // Get top 3 locations only
   const topLocations = Object.entries(locationCounts)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
+    .slice(0, 3);
 
   if (topLocations.length === 0) {
     return null;

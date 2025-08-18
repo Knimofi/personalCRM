@@ -131,6 +131,21 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
     }
   };
 
+  const getSocialButtonStyle = (type: 'email' | 'instagram' | 'linkedin' | 'website') => {
+    switch (type) {
+      case 'linkedin':
+        return 'text-[#0077B5] hover:text-[#0077B5]';
+      case 'instagram':
+        return 'text-[#E4405F] hover:text-[#E4405F]';
+      case 'email':
+        return 'text-gray-600 hover:text-gray-800';
+      case 'website':
+        return 'text-blue-600 hover:text-blue-800';
+      default:
+        return 'text-blue-600 hover:text-blue-800';
+    }
+  };
+
   const handleToggleHidden = async (contact: Contact, e: React.MouseEvent) => {
     e.stopPropagation();
     await updateContact.mutateAsync({
@@ -182,7 +197,7 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
           href={link}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center space-x-1 text-blue-600 hover:text-blue-800"
+          className={`flex items-center space-x-1 ${getSocialButtonStyle(type)} transition-colors`}
           onClick={(e) => e.stopPropagation()}
         >
           {getSocialIcon(type)}
@@ -407,7 +422,7 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="font-semibold w-16">Photo</TableHead>
+              <TableHead className="font-semibold w-16">Profile</TableHead>
               <SortableHeader field="name">Name</SortableHeader>
               <SortableHeader field="location_from">Location</SortableHeader>
               <SortableHeader field="context">Highlights</SortableHeader>

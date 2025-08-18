@@ -120,11 +120,29 @@ export const ContactDetailModal = ({ contact, isOpen, onClose }: ContactDetailMo
     
     const link = getSocialLink(type);
     
+    // Social media brand colors
+    const getButtonStyle = () => {
+      switch (type) {
+        case 'linkedin':
+          return 'border-[#0077B5] text-[#0077B5] hover:bg-[#0077B5] hover:text-white';
+        case 'instagram':
+          return 'border-[#E4405F] text-[#E4405F] hover:bg-[#E4405F] hover:text-white';
+        case 'email':
+          return 'border-gray-500 text-gray-500 hover:bg-gray-500 hover:text-white';
+        case 'website':
+          return 'border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white';
+        case 'phone':
+          return 'border-green-500 text-green-500 hover:bg-green-500 hover:text-white';
+        default:
+          return 'border-gray-500 text-gray-500 hover:bg-gray-500 hover:text-white';
+      }
+    };
+    
     return (
       <Button
         variant="outline"
         size="sm"
-        className="justify-start h-8"
+        className={`justify-start h-8 transition-colors ${getButtonStyle()}`}
         onClick={() => link && window.open(link, '_blank')}
       >
         {icon}
@@ -270,10 +288,10 @@ export const ContactDetailModal = ({ contact, isOpen, onClose }: ContactDetailMo
               </div>
             </div>
 
-            {/* Context with Job Title Highlighted */}
+            {/* Highlights */}
             {contact.context && (
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-700">Context & Background</h3>
+                <h3 className="text-sm font-medium text-gray-700">Highlights</h3>
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="text-sm text-gray-600">{contact.context}</p>
                 </div>

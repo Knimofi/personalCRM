@@ -130,6 +130,7 @@ export const ContactEditModal = ({
       profile_picture_url: profileImageUrl || undefined,
     };
 
+    console.log('Final data being saved:', updatedData);
     await onSave(updatedData);
   };
 
@@ -206,7 +207,7 @@ export const ContactEditModal = ({
                   <FormItem>
                     <FormLabel>Met At</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Conference, Coffee shop, etc." />
+                      <Input {...field} placeholder="City, Country" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -221,7 +222,7 @@ export const ContactEditModal = ({
                 <FormItem>
                   <FormLabel>Highlights</FormLabel>
                   <FormControl>
-                    <Textarea {...field} rows={3} placeholder="Key points, important details, things to remember..." />
+                    <Textarea {...field} rows={3} placeholder="Key highlights, important details, things to remember..." />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
