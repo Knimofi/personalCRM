@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -216,8 +215,7 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
       root.render(
         <GroupedMarker
           contacts={locationGroup.contacts}
-          onClick={(e) => {
-            e?.stopPropagation();
+          onClick={() => {
             console.log(`Marker clicked for location group with ${locationGroup.contacts.length} contacts`);
             setSelectedLocationGroup(locationGroup);
           }}
