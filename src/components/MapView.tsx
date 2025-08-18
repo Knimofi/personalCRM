@@ -7,6 +7,7 @@ import { InteractiveMap, InteractiveMapRef } from './InteractiveMap';
 import { LocationDropdown } from './LocationDropdown';
 import { TopLocationsStats } from './TopLocationsStats';
 import { LocationToggle } from './LocationToggle';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MapViewProps {
   contacts: Contact[];
@@ -18,6 +19,7 @@ export type LocationType = 'where_live' | 'where_met';
 export const MapView = ({ contacts, isLoading }: MapViewProps) => {
   const mapRef = useRef<InteractiveMapRef>(null);
   const [locationType, setLocationType] = useState<LocationType>('where_live');
+  const isMobile = useIsMobile();
   
   const contactsWithCoordinates = useMemo(() => {
     if (locationType === 'where_live') {
@@ -62,7 +64,7 @@ export const MapView = ({ contacts, isLoading }: MapViewProps) => {
               onLocationTypeChange={setLocationType}
             />
           </div>
-          <div className="lg:ml-auto">
+          <div className={`${isMobile ? 'w-full' : 'lg:ml-auto'}`}>
             <TopLocationsStats contacts={contacts} locationType={locationType} />
           </div>
         </div>

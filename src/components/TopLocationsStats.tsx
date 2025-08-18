@@ -4,6 +4,7 @@ import { Contact } from '@/types/contact';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3 } from 'lucide-react';
 import { LocationType } from './MapView';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TopLocationsStatsProps {
   contacts: Contact[];
@@ -11,6 +12,8 @@ interface TopLocationsStatsProps {
 }
 
 export const TopLocationsStats = ({ contacts, locationType }: TopLocationsStatsProps) => {
+  const isMobile = useIsMobile();
+  
   // Count contacts by location
   const locationCounts = contacts.reduce((acc, contact) => {
     const location = locationType === 'where_live' ? contact.location_from : contact.location_met;
@@ -32,7 +35,7 @@ export const TopLocationsStats = ({ contacts, locationType }: TopLocationsStatsP
   const title = locationType === 'where_live' ? 'Top Living Locations' : 'Top Meeting Locations';
 
   return (
-    <Card className="w-full lg:w-64">
+    <Card className={`${isMobile ? 'w-full' : 'w-full lg:w-64'}`}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center space-x-2">
           <BarChart3 className="h-4 w-4" />

@@ -267,7 +267,7 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
           </div>
         </div>
 
-        {/* Mobile Cards */}
+        {/* Mobile Cards - Simplified */}
         <div className="space-y-3">
           {sortedContacts.map((contact) => (
             <div
@@ -282,30 +282,7 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
                   size="md"
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium truncate">{contact.name}</h3>
-                    <div className="flex space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => handleToggleHidden(contact, e)}
-                        className="h-8 w-8 p-0"
-                      >
-                        {contact.is_hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingContact(contact);
-                        }}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                  <h3 className="font-medium truncate">{contact.name}</h3>
                   {contact.location_from && (
                     <div className="flex items-center space-x-1 text-sm text-gray-600 mt-1">
                       <MapPin className="h-3 w-3" />

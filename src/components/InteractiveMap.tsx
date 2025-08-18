@@ -63,7 +63,7 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
       }
     });
 
-    console.log(`Found ${contactsWithCoordinates.length} contacts with valid coordinates out of ${contacts.length} total contacts`);
+    console.log(`Found ${contactsWithCoordinates.length} contacts with valid coordinates out of ${contacts.length} total contacts for ${locationType}`);
 
     const groups: { [key: string]: Contact[] } = {};
     
@@ -100,6 +100,17 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
     window.location.reload();
   };
 
+  const closePopup = () => {
+    setSelectedLocationGroup(null);
+  };
+
+  // Close popup when clicking on map
+  const handleMapClick = () => {
+    if (selectedLocationGroup) {
+      setSelectedLocationGroup(null);
+    }
+  };
+
   // Initialize map
   useEffect(() => {
     if (!mapContainer.current || !mapboxToken || tokenLoading) {
@@ -123,6 +134,9 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
         zoom: 4,
         center: [10, 54], // Center on Europe
       });
+
+      // Add click handler to close popup
+      map.current.on('click', handleMapClick);
 
       // Add error handling
       map.current.on('error', (e) => {
@@ -202,7 +216,8 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
       root.render(
         <GroupedMarker
           contacts={locationGroup.contacts}
-          onClick={() => {
+          onClick={(e) => {
+            e?.stopPropagation();
             console.log(`Marker clicked for location group with ${locationGroup.contacts.length} contacts`);
             setSelectedLocationGroup(locationGroup);
           }}
@@ -225,10 +240,6 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
     
     console.log(`Successfully added ${markersRef.current.length} markers to map`);
   }, [locationGroups, isMapReady]);
-
-  const closePopup = () => {
-    setSelectedLocationGroup(null);
-  };
 
   // Show loading state
   if (tokenLoading) {
