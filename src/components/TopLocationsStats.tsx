@@ -10,16 +10,16 @@ interface TopLocationsStatsProps {
 
 export const TopLocationsStats = ({ contacts }: TopLocationsStatsProps) => {
   const { topCities, topCountries } = useMemo(() => {
-    const contactsWithLocation = contacts.filter(contact => contact.location);
+    const contactsWithLocation = contacts.filter(contact => contact.location_from);
     
     // Count contacts by city
     const cityCount: { [key: string]: number } = {};
     const countryCount: { [key: string]: number } = {};
     
     contactsWithLocation.forEach(contact => {
-      if (contact.location) {
+      if (contact.location_from) {
         // Assume location format is "City, Country" or just "City"
-        const parts = contact.location.split(',').map(part => part.trim());
+        const parts = contact.location_from.split(',').map(part => part.trim());
         
         if (parts.length >= 2) {
           // "City, Country" format

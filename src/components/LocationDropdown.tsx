@@ -10,11 +10,11 @@ interface LocationDropdownProps {
 }
 
 export const LocationDropdown = ({ contacts, onLocationSelect }: LocationDropdownProps) => {
-  const contactsWithCoordinates = contacts.filter(contact => contact.latitude && contact.longitude);
+  const contactsWithCoordinates = contacts.filter(contact => contact.location_from_latitude && contact.location_from_longitude);
   
   // Group contacts by location
   const locationGroups = contactsWithCoordinates.reduce((groups, contact) => {
-    const key = `${contact.latitude}-${contact.longitude}`;
+    const key = `${contact.location_from_latitude}-${contact.location_from_longitude}`;
     if (!groups[key]) {
       groups[key] = [];
     }
@@ -24,7 +24,7 @@ export const LocationDropdown = ({ contacts, onLocationSelect }: LocationDropdow
 
   const locations = Object.entries(locationGroups).map(([coordinates, groupContacts]) => {
     const [lat, lng] = coordinates.split('-').map(Number);
-    const location = groupContacts[0].location || 'Unknown Location';
+    const location = groupContacts[0].location_from || 'Unknown Location';
     return {
       coordinates,
       location,

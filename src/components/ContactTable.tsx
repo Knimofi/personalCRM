@@ -38,7 +38,7 @@ interface ContactTableProps {
   isLoading: boolean;
 }
 
-type SortField = 'name' | 'location' | 'context' | 'date_met' | 'birthday' | 'email' | 'instagram' | 'linkedin' | 'website';
+type SortField = 'name' | 'location_from' | 'context' | 'date_met' | 'birthday' | 'email' | 'instagram' | 'linkedin' | 'website';
 type SortDirection = 'asc' | 'desc';
 
 export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
@@ -101,16 +101,16 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
     
     const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          contact.context?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         contact.location?.toLowerCase().includes(searchTerm.toLowerCase());
+                         contact.location_from?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesLocation = !locationFilter || contact.location?.toLowerCase().includes(locationFilter.toLowerCase());
+    const matchesLocation = !locationFilter || contact.location_from?.toLowerCase().includes(locationFilter.toLowerCase());
     
     return matchesSearch && matchesLocation;
   });
 
   const sortedContacts = sortContacts(filteredContacts);
 
-  const uniqueLocations = [...new Set(contacts.map(c => c.location).filter(Boolean))];
+  const uniqueLocations = [...new Set(contacts.map(c => c.location_from).filter(Boolean))];
   const hiddenCount = contacts.filter(c => c.is_hidden).length;
 
   const formatDate = (dateString?: string) => {
@@ -269,7 +269,7 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
           <TableHeader>
             <TableRow>
               <SortableHeader field="name">Name</SortableHeader>
-              <SortableHeader field="location">Location</SortableHeader>
+              <SortableHeader field="location_from">Location</SortableHeader>
               <SortableHeader field="context">Context</SortableHeader>
               <SortableHeader field="date_met">Date Met</SortableHeader>
               <SortableHeader field="birthday">Birthday</SortableHeader>
@@ -298,10 +298,10 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
                   </div>
                 </TableCell>
                 <TableCell>
-                  {contact.location ? (
+                  {contact.location_from ? (
                     <div className="flex items-center space-x-1">
                       <MapPin className="h-3 w-3 text-gray-400" />
-                      <span className="text-sm">{contact.location}</span>
+                      <span className="text-sm">{contact.location_from}</span>
                     </div>
                   ) : (
                     <span className="text-gray-400">-</span>

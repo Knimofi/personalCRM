@@ -52,8 +52,8 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
   // Get contacts with coordinates and group them by location
   const locationGroups = React.useMemo(() => {
     const contactsWithCoordinates = contacts.filter(contact => 
-      contact.latitude && contact.longitude && 
-      !isNaN(contact.latitude) && !isNaN(contact.longitude)
+      contact.location_from_latitude && contact.location_from_longitude && 
+      !isNaN(contact.location_from_latitude) && !isNaN(contact.location_from_longitude)
     );
 
     console.log(`Found ${contactsWithCoordinates.length} contacts with valid coordinates out of ${contacts.length} total contacts`);
@@ -62,8 +62,8 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
     
     contactsWithCoordinates.forEach(contact => {
       // Group contacts that are very close to each other (within ~100m)
-      const roundedLat = Math.round(contact.latitude! * 1000) / 1000;
-      const roundedLng = Math.round(contact.longitude! * 1000) / 1000;
+      const roundedLat = Math.round(contact.location_from_latitude! * 1000) / 1000;
+      const roundedLng = Math.round(contact.location_from_longitude! * 1000) / 1000;
       const key = `${roundedLat}-${roundedLng}`;
       
       if (!groups[key]) {
