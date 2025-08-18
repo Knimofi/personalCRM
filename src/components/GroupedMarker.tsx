@@ -4,7 +4,7 @@ import { Contact } from '@/types/contact';
 
 interface GroupedMarkerProps {
   contacts: Contact[];
-  onClick: () => void;
+  onClick: (e?: Event) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
 }
@@ -17,11 +17,15 @@ export const GroupedMarker = ({
 }: GroupedMarkerProps) => {
   const contactCount = contacts.length;
 
-  // Always show a single grouped marker with consistent blue styling
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClick(e.nativeEvent);
+  };
+
   return (
     <div
       className="relative cursor-pointer transform hover:scale-110 transition-transform"
-      onClick={onClick}
+      onClick={handleClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >

@@ -1,230 +1,87 @@
-import { useState } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+
+import React, { useState, useMemo } from 'react';
 import { Contact } from '@/types/contact';
 import { ContactDetailModal } from './ContactDetailModal';
 import { ContactEditModal } from './ContactEditModal';
-import { ConfirmationDialog } from './ConfirmationDialog';
 import { ContactAvatar } from './ContactAvatar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Eye, EyeOff, Edit, Trash2, Search, Calendar, MapPin } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useContacts } from '@/hooks/useContacts';
+import { useToast } from '@/hooks/use-toast';
+import { ConfirmationDialog } from './ConfirmationDialog';
+import { formatBirthdayDate } from '@/utils/birthdayUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { 
-  Search, 
-  Calendar, 
-  MapPin, 
-  Mail, 
-  Instagram, 
-  Linkedin, 
-  Globe,
-  Edit,
-  Trash2,
-  Eye,
-  EyeOff,
-  Gift,
-  ChevronUp,
-  ChevronDown
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 
 interface ContactTableProps {
   contacts: Contact[];
   isLoading: boolean;
 }
 
-type SortField = 'name' | 'location_from' | 'context' | 'date_met' | 'birthday' | 'email' | 'instagram' | 'linkedin' | 'website';
-type SortDirection = 'asc' | 'desc';
-
 export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [locationFilter, setLocationFilter] = useState('');
   const [showHidden, setShowHidden] = useState(false);
-  const [sortField, setSortField] = useState<SortField | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
   const { updateContact, deleteContact } = useContacts();
+  const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
+  // Filter contacts based on search and visibility
+  const filteredContacts = useMemo(() => {
+    return contacts.filter(contact => {
+      const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          contact.location_from?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          contact.location_met?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          contact.context?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesVisibility = showHidden || !contact.is_hidden;
+      
+      return matchesSearch && matchesVisibility;
+    });
+  }, [contacts, searchTerm, showHidden]);
 
-  const sortContacts = (contactsToSort: Contact[]) => {
-    if (!sortField) return contactsToSort;
-
-    return [...contactsToSort].sort((a, b) => {
-      let aValue = a[sortField];
-      let bValue = b[sortField];
-
-      if (aValue === null || aValue === undefined) aValue = '';
-      if (bValue === null || bValue === undefined) bValue = '';
-
-      const aStr = String(aValue).toLowerCase();
-      const bStr = String(bValue).toLowerCase();
-
-      let comparison = 0;
-
-      if (sortField === 'date_met' || sortField === 'birthday') {
-        const aDate = aValue ? new Date(aValue as string) : new Date(0);
-        const bDate = bValue ? new Date(bValue as string) : new Date(0);
-        comparison = aDate.getTime() - bDate.getTime();
-      } else {
-        comparison = aStr.localeCompare(bStr);
-      }
-
-      return sortDirection === 'asc' ? comparison : -comparison;
+  const handleToggleHidden = async (contact: Contact) => {
+    updateContact.mutate({
+      id: contact.id,
+      is_hidden: !contact.is_hidden
     });
   };
 
-  const filteredContacts = contacts.filter(contact => {
-    if (!showHidden && contact.is_hidden) return false;
-    
-    const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         contact.context?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         contact.location_from?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesLocation = !locationFilter || contact.location_from?.toLowerCase().includes(locationFilter.toLowerCase());
-    
-    return matchesSearch && matchesLocation;
-  });
-
-  const sortedContacts = sortContacts(filteredContacts);
-
-  const uniqueLocations = [...new Set(contacts.map(c => c.location_from).filter(Boolean))];
-  const hiddenCount = contacts.filter(c => c.is_hidden).length;
+  const handleDeleteContact = async (contact: Contact) => {
+    try {
+      await deleteContact.mutateAsync(contact.id);
+      setContactToDelete(null);
+    } catch (error) {
+      console.error('Delete error:', error);
+    }
+  };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
+    if (!dateString) return '';
     return new Date(dateString).toLocaleDateString();
-  };
-
-  const getSocialIcon = (type: 'email' | 'instagram' | 'linkedin' | 'website') => {
-    switch (type) {
-      case 'email': return <Mail className="h-3 w-3" />;
-      case 'instagram': return <Instagram className="h-3 w-3" />;
-      case 'linkedin': return <Linkedin className="h-3 w-3" />;
-      case 'website': return <Globe className="h-3 w-3" />;
-    }
-  };
-
-  const getSocialLink = (contact: Contact, type: 'email' | 'instagram' | 'linkedin' | 'website') => {
-    switch (type) {
-      case 'email': return contact.email ? `mailto:${contact.email}` : null;
-      case 'instagram': return contact.instagram ? `https://instagram.com/${contact.instagram.replace('@', '')}` : null;
-      case 'linkedin': return contact.linkedin;
-      case 'website': return contact.website;
-    }
-  };
-
-  const getSocialButtonStyle = (type: 'email' | 'instagram' | 'linkedin' | 'website') => {
-    switch (type) {
-      case 'linkedin':
-        return 'text-[#0077B5] hover:text-[#0077B5]';
-      case 'instagram':
-        return 'text-[#E4405F] hover:text-[#E4405F]';
-      case 'email':
-        return 'text-gray-600 hover:text-gray-800';
-      case 'website':
-        return 'text-blue-600 hover:text-blue-800';
-      default:
-        return 'text-blue-600 hover:text-blue-800';
-    }
-  };
-
-  const handleToggleHidden = async (contact: Contact, e: React.MouseEvent) => {
-    e.stopPropagation();
-    await updateContact.mutateAsync({
-      id: contact.id,
-      is_hidden: !contact.is_hidden,
-    });
-  };
-
-  const handleEdit = async (data: Partial<Contact>) => {
-    if (!editingContact) return;
-    await updateContact.mutateAsync({
-      id: editingContact.id,
-      ...data,
-    });
-    setEditingContact(null);
-  };
-
-  const handleDelete = async () => {
-    if (!deletingContact) return;
-    await deleteContact.mutateAsync(deletingContact.id);
-    setDeletingContact(null);
-  };
-
-  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <TableHead 
-      className="font-semibold cursor-pointer hover:bg-gray-50 select-none"
-      onClick={() => handleSort(field)}
-    >
-      <div className="flex items-center space-x-1">
-        <span>{children}</span>
-        {sortField === field && (
-          sortDirection === 'asc' ? 
-            <ChevronUp className="h-4 w-4" /> : 
-            <ChevronDown className="h-4 w-4" />
-        )}
-      </div>
-    </TableHead>
-  );
-
-  const SocialLink = ({ contact, type }: { contact: Contact; type: 'email' | 'instagram' | 'linkedin' | 'website' }) => {
-    const link = getSocialLink(contact, type);
-    const value = contact[type];
-    
-    if (!value) return <span className="text-gray-400">-</span>;
-    
-    if (link) {
-      return (
-        <a
-          href={link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`flex items-center space-x-1 ${getSocialButtonStyle(type)} transition-colors`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {getSocialIcon(type)}
-          <span className="text-xs truncate max-w-[100px]">{type === 'email' ? value : type === 'instagram' ? `@${value.replace('@', '')}` : 'Link'}</span>
-        </a>
-      );
-    }
-    
-    return <span className="text-xs text-gray-600 truncate max-w-[100px]">{value}</span>;
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading contacts...</div>
+      <div className="space-y-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-16 bg-gray-100 rounded animate-pulse" />
+        ))}
       </div>
     );
   }
 
-  // Mobile card view for very small screens
+  // Mobile Card View
   if (isMobile) {
     return (
-      <div className="space-y-4">
-        {/* Mobile Filters */}
-        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+      <div className="block md:hidden">
+        {/* Search and filters */}
+        <div className="flex flex-col space-y-3 mb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search contacts..."
               value={searchTerm}
@@ -232,47 +89,26 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
               className="pl-10"
             />
           </div>
-          <select
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
+          
+          <Button
+            variant="outline"
+            onClick={() => setShowHidden(!showHidden)}
+            className="self-start"
+            size="sm"
           >
-            <option value="">All Locations</option>
-            {uniqueLocations.map(location => (
-              <option key={location} value={location}>{location}</option>
-            ))}
-          </select>
-          <div className="flex space-x-2">
-            <Button
-              variant={showHidden ? "default" : "outline"}
-              onClick={() => setShowHidden(!showHidden)}
-              size="sm"
-              className="flex items-center space-x-2 flex-1"
-            >
-              {showHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              <span>{showHidden ? 'Hide Hidden' : `Show Hidden (${hiddenCount})`}</span>
-            </Button>
-            {(searchTerm || locationFilter) && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm('');
-                  setLocationFilter('');
-                }}
-                size="sm"
-              >
-                Clear
-              </Button>
-            )}
-          </div>
+            {showHidden ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {showHidden ? 'Hide Hidden' : 'Show Hidden'} ({contacts.filter(c => c.is_hidden).length})
+          </Button>
         </div>
 
-        {/* Mobile Cards - Simplified */}
+        {/* Mobile Contact Cards */}
         <div className="space-y-3">
-          {sortedContacts.map((contact) => (
+          {filteredContacts.map((contact) => (
             <div
               key={contact.id}
-              className={`bg-white rounded-lg border p-4 cursor-pointer hover:bg-gray-50 ${contact.is_hidden ? 'opacity-60' : ''}`}
+              className={`bg-white rounded-lg border p-4 cursor-pointer hover:shadow-md transition-shadow ${
+                contact.is_hidden ? 'opacity-60 border-gray-300' : 'border-gray-200'
+              }`}
               onClick={() => setSelectedContact(contact)}
             >
               <div className="flex items-start space-x-3">
@@ -282,20 +118,29 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
                   size="md"
                 />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{contact.name}</h3>
+                  <h3 className="font-semibold text-gray-900 truncate">{contact.name}</h3>
+                  
+                  {/* Location Info */}
                   {contact.location_from && (
-                    <div className="flex items-center space-x-1 text-sm text-gray-600 mt-1">
-                      <MapPin className="h-3 w-3" />
+                    <div className="flex items-center text-sm text-gray-600 mt-1">
+                      <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
                       <span className="truncate">{contact.location_from}</span>
                     </div>
                   )}
-                  {contact.context && (
-                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{contact.context}</p>
-                  )}
+                  
+                  {/* Date Info */}
                   {contact.date_met && (
-                    <div className="flex items-center space-x-1 text-xs text-gray-500 mt-2">
-                      <Calendar className="h-3 w-3" />
+                    <div className="flex items-center text-sm text-gray-600 mt-1">
+                      <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
                       <span>Met: {formatDate(contact.date_met)}</span>
+                    </div>
+                  )}
+                  
+                  {/* Birthday */}
+                  {contact.birthday && (
+                    <div className="flex items-center text-sm text-blue-600 mt-1">
+                      <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
+                      <span>Birthday: {formatBirthdayDate(contact.birthday)}</span>
                     </div>
                   )}
                 </div>
@@ -304,6 +149,13 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
           ))}
         </div>
 
+        {filteredContacts.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            {searchTerm ? 'No contacts match your search.' : 'No contacts found.'}
+          </div>
+        )}
+
+        {/* Modals */}
         {selectedContact && (
           <ContactDetailModal
             contact={selectedContact}
@@ -317,106 +169,71 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
             contact={editingContact}
             isOpen={!!editingContact}
             onClose={() => setEditingContact(null)}
-            onSave={handleEdit}
-            isLoading={updateContact.isPending}
           />
         )}
 
-        {deletingContact && (
+        {contactToDelete && (
           <ConfirmationDialog
-            isOpen={!!deletingContact}
-            onClose={() => setDeletingContact(null)}
-            onConfirm={handleDelete}
+            isOpen={!!contactToDelete}
+            onClose={() => setContactToDelete(null)}
+            onConfirm={() => handleDeleteContact(contactToDelete)}
             title="Delete Contact"
-            description={`Are you sure you want to delete ${deletingContact.name}? This action cannot be undone.`}
-            confirmText="Delete"
-            isDestructive
+            description={`Are you sure you want to delete ${contactToDelete.name}? This action cannot be undone.`}
+            confirmLabel="Delete"
+            confirmVariant="destructive"
           />
         )}
       </div>
     );
   }
 
-  // Desktop table view
+  // Desktop Table View
   return (
-    <div className="space-y-4">
-      {/* Desktop Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 rounded-lg">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search contacts..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+    <div className="hidden md:block">
+      {/* Search and filters */}
+      <div className="flex items-center space-x-4 mb-6">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search contacts..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
-        <div className="sm:w-48">
-          <select
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
-          >
-            <option value="">All Locations</option>
-            {uniqueLocations.map(location => (
-              <option key={location} value={location}>{location}</option>
-            ))}
-          </select>
-        </div>
+        
         <Button
-          variant={showHidden ? "default" : "outline"}
+          variant="outline"
           onClick={() => setShowHidden(!showHidden)}
-          size="sm"
-          className="flex items-center space-x-2"
+          className="whitespace-nowrap"
         >
-          {showHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-          <span>{showHidden ? 'Hide Hidden' : `Show Hidden (${hiddenCount})`}</span>
+          {showHidden ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+          {showHidden ? 'Hide Hidden' : 'Show Hidden'} ({contacts.filter(c => c.is_hidden).length})
         </Button>
-        {(searchTerm || locationFilter) && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              setSearchTerm('');
-              setLocationFilter('');
-            }}
-            size="sm"
-          >
-            Clear Filters
-          </Button>
-        )}
-      </div>
-
-      {/* Results Count */}
-      <div className="text-sm text-gray-600 px-1">
-        Showing {sortedContacts.length} of {contacts.length} contacts
-        {!showHidden && hiddenCount > 0 && ` (${hiddenCount} hidden)`}
       </div>
 
       {/* Desktop Table */}
-      <div className="bg-white rounded-lg border overflow-x-auto">
+      <div className="border rounded-lg overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="font-semibold w-16">Profile</TableHead>
-              <SortableHeader field="name">Name</SortableHeader>
-              <SortableHeader field="location_from">Location</SortableHeader>
-              <SortableHeader field="context">Highlights</SortableHeader>
-              <SortableHeader field="date_met">Date Met</SortableHeader>
-              <SortableHeader field="birthday">Birthday</SortableHeader>
-              <SortableHeader field="email">Email</SortableHeader>
-              <SortableHeader field="instagram">Instagram</SortableHeader>
-              <SortableHeader field="linkedin">LinkedIn</SortableHeader>
-              <SortableHeader field="website">Website</SortableHeader>
-              <TableHead className="font-semibold">Actions</TableHead>
+              <TableHead className="w-12"></TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Lives In</TableHead>
+              <TableHead>Met At</TableHead>
+              <TableHead>Date Met</TableHead>
+              <TableHead>Birthday</TableHead>
+              <TableHead>Context</TableHead>
+              <TableHead className="w-32">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedContacts.map((contact) => (
+            {filteredContacts.map((contact) => (
               <TableRow
                 key={contact.id}
-                className={`cursor-pointer hover:bg-gray-50 ${contact.is_hidden ? 'opacity-60' : ''}`}
+                className={`cursor-pointer hover:bg-gray-50 ${
+                  contact.is_hidden ? 'opacity-60 bg-gray-50' : ''
+                }`}
                 onClick={() => setSelectedContact(contact)}
               >
                 <TableCell>
@@ -426,66 +243,32 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
                     size="sm"
                   />
                 </TableCell>
-                <TableCell className="font-medium">
-                  <div className="flex items-center space-x-2">
-                    <span>{contact.name}</span>
-                    {contact.is_hidden && (
-                      <Badge variant="secondary" className="text-xs">
-                        <EyeOff className="h-3 w-3" />
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {contact.location_from ? (
-                    <div className="flex items-center space-x-1">
-                      <MapPin className="h-3 w-3 text-gray-400" />
-                      <span className="text-sm">{contact.location_from}</span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </TableCell>
-                <TableCell className="max-w-[200px]">
-                  <span className="text-sm text-gray-600 truncate block">
-                    {contact.context || '-'}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="h-3 w-3 text-gray-400" />
-                    <span className="text-sm">{formatDate(contact.date_met)}</span>
-                  </div>
-                </TableCell>
+                <TableCell className="font-medium">{contact.name}</TableCell>
+                <TableCell>{contact.location_from || '-'}</TableCell>
+                <TableCell>{contact.location_met || '-'}</TableCell>
+                <TableCell>{contact.date_met ? formatDate(contact.date_met) : '-'}</TableCell>
                 <TableCell>
                   {contact.birthday ? (
-                    <div className="flex items-center space-x-1">
-                      <Gift className="h-3 w-3 text-gray-400" />
-                      <span className="text-sm">{formatDate(contact.birthday)}</span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
+                    <span className="text-blue-600 font-medium">
+                      {formatBirthdayDate(contact.birthday)}
+                    </span>
+                  ) : '-'}
+                </TableCell>
+                <TableCell className="max-w-xs">
+                  <div className="truncate" title={contact.context || ''}>
+                    {contact.context || '-'}
+                  </div>
                 </TableCell>
                 <TableCell>
-                  <SocialLink contact={contact} type="email" />
-                </TableCell>
-                <TableCell>
-                  <SocialLink contact={contact} type="instagram" />
-                </TableCell>
-                <TableCell>
-                  <SocialLink contact={contact} type="linkedin" />
-                </TableCell>
-                <TableCell>
-                  <SocialLink contact={contact} type="website" />
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-1">
+                  <div className="flex items-center space-x-2">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => handleToggleHidden(contact, e)}
-                      className="h-8 w-8 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleHidden(contact);
+                      }}
+                      title={contact.is_hidden ? 'Show contact' : 'Hide contact'}
                     >
                       {contact.is_hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                     </Button>
@@ -496,7 +279,7 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
                         e.stopPropagation();
                         setEditingContact(contact);
                       }}
-                      className="h-8 w-8 p-0"
+                      title="Edit contact"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -505,9 +288,10 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setDeletingContact(contact);
+                        setContactToDelete(contact);
                       }}
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      title="Delete contact"
+                      className="text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -519,12 +303,13 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
         </Table>
       </div>
 
-      {sortedContacts.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          {contacts.length === 0 ? 'No contacts yet.' : 'No contacts match your filters.'}
+      {filteredContacts.length === 0 && (
+        <div className="text-center py-12 text-gray-500">
+          {searchTerm ? 'No contacts match your search.' : 'No contacts found.'}
         </div>
       )}
 
+      {/* Modals */}
       {selectedContact && (
         <ContactDetailModal
           contact={selectedContact}
@@ -538,20 +323,18 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
           contact={editingContact}
           isOpen={!!editingContact}
           onClose={() => setEditingContact(null)}
-          onSave={handleEdit}
-          isLoading={updateContact.isPending}
         />
       )}
 
-      {deletingContact && (
+      {contactToDelete && (
         <ConfirmationDialog
-          isOpen={!!deletingContact}
-          onClose={() => setDeletingContact(null)}
-          onConfirm={handleDelete}
+          isOpen={!!contactToDelete}
+          onClose={() => setContactToDelete(null)}
+          onConfirm={() => handleDeleteContact(contactToDelete)}
           title="Delete Contact"
-          description={`Are you sure you want to delete ${deletingContact.name}? This action cannot be undone.`}
-          confirmText="Delete"
-          isDestructive
+          description={`Are you sure you want to delete ${contactToDelete.name}? This action cannot be undone.`}
+          confirmLabel="Delete"
+          confirmVariant="destructive"
         />
       )}
     </div>

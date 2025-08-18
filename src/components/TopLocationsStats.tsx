@@ -35,7 +35,7 @@ export const TopLocationsStats = ({ contacts, locationType }: TopLocationsStatsP
   const title = locationType === 'where_live' ? 'Top Living Locations' : 'Top Meeting Locations';
 
   return (
-    <Card className={`${isMobile ? 'w-full' : 'w-full lg:w-64'}`}>
+    <Card className="w-full">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center space-x-2">
           <BarChart3 className="h-4 w-4" />
@@ -47,7 +47,7 @@ export const TopLocationsStats = ({ contacts, locationType }: TopLocationsStatsP
           {topLocations.map(([location, count]) => (
             <div key={location} className="flex justify-between items-center text-sm">
               <span className="truncate flex-1 mr-2">{location}</span>
-              <span className="font-medium text-blue-600">{count}</span>
+              <span className="font-medium text-blue-600 flex-shrink-0">{count}</span>
             </div>
           ))}
         </div>

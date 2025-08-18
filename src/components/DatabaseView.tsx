@@ -16,18 +16,20 @@ export const DatabaseView = () => {
   const nextBirthdayContact = getNextBirthday(contacts);
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-6">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {nextBirthdayContact && (
-              <div className="text-xs text-gray-500 mb-1 text-left" style={{ fontSize: '9px' }}>
+              <div className="text-xs text-gray-500 mb-1 leading-tight" style={{ fontSize: '10px' }}>
                 next birthday: {nextBirthdayContact.name} ({formatBirthdayDate(nextBirthdayContact.birthday!)})
               </div>
             )}
-            <h2 className="text-2xl font-bold text-gray-900 text-left whitespace-nowrap">Contact Database</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">
+              Contact Database
+            </h2>
           </div>
-          <div className="sm:ml-auto">
+          <div className="flex-shrink-0 w-full sm:w-auto">
             <ExportButton contacts={contacts} />
           </div>
         </div>

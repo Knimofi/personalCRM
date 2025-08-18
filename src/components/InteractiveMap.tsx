@@ -103,9 +103,11 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
     setSelectedLocationGroup(null);
   };
 
-  // Close popup when clicking on map
-  const handleMapClick = () => {
-    if (selectedLocationGroup) {
+  // Close popup when clicking on map - fixed with proper event handling
+  const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
+    // Only close popup if clicking directly on the map, not on markers
+    if (selectedLocationGroup && !e.defaultPrevented) {
+      console.log('Map clicked, closing popup');
       setSelectedLocationGroup(null);
     }
   };
@@ -134,7 +136,7 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
         center: [10, 54], // Center on Europe
       });
 
-      // Add click handler to close popup
+      // Add click handler to close popup - fixed
       map.current.on('click', handleMapClick);
 
       // Add error handling
@@ -215,7 +217,9 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
       root.render(
         <GroupedMarker
           contacts={locationGroup.contacts}
-          onClick={() => {
+          onClick={(e) => {
+            // Prevent map click event from firing
+            if (e) e.stopPropagation();
             console.log(`Marker clicked for location group with ${locationGroup.contacts.length} contacts`);
             setSelectedLocationGroup(locationGroup);
           }}
@@ -228,10 +232,15 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
         />
       );
 
-      // Create marker
+      // Create marker with click event prevention
       const marker = new mapboxgl.Marker(markerEl)
         .setLngLat([locationGroup.longitude, locationGroup.latitude])
         .addTo(map.current!);
+
+      // Add click listener to marker element to prevent map click
+      markerEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
 
       markersRef.current.push(marker);
     });
