@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,17 +21,22 @@ export const useUserPreferences = () => {
     queryFn: async () => {
       if (!user) return null;
       
-      const { data, error } = await supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('user_preferences')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-        throw error;
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+          throw error;
+        }
+
+        return data as UserPreferences | null;
+      } catch (error) {
+        console.error('Error fetching user preferences:', error);
+        return null;
       }
-
-      return data as UserPreferences | null;
     },
     enabled: !!user,
   });
@@ -77,10 +82,15 @@ export const useUserPreferences = () => {
   });
 
   const setBirthdayReminders = async (enabled: boolean) => {
-    if (preferences) {
-      await updatePreferences.mutateAsync({ birthday_reminders_enabled: enabled });
-    } else {
-      await createPreferences.mutateAsync(enabled);
+    try {
+      if (preferences) {
+        await updatePreferences.mutateAsync({ birthday_reminders_enabled: enabled });
+      } else {
+        await createPreferences.mutateAsync(enabled);
+      }
+    } catch (error) {
+      console.error('Error setting birthday reminders:', error);
+      throw error;
     }
   };
 
