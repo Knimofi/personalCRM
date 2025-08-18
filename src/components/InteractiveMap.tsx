@@ -9,9 +9,11 @@ import { useMapboxToken } from '@/hooks/useMapboxToken';
 import { GroupedMarker } from './GroupedMarker';
 import { MultiContactPopup } from './MultiContactPopup';
 import { createRoot } from 'react-dom/client';
+import { LocationType } from './MapView';
 
 interface InteractiveMapProps {
   contacts: Contact[];
+  locationType: LocationType;
 }
 
 interface LocationGroup {
@@ -25,7 +27,7 @@ export interface InteractiveMapRef {
   flyToLocation: (latitude: number, longitude: number) => void;
 }
 
-export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>(({ contacts }, ref) => {
+export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>(({ contacts, locationType }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -51,10 +53,15 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
 
   // Get contacts with coordinates and group them by location
   const locationGroups = React.useMemo(() => {
-    const contactsWithCoordinates = contacts.filter(contact => 
-      contact.location_from_latitude && contact.location_from_longitude && 
-      !isNaN(contact.location_from_latitude) && !isNaN(contact.location_from_longitude)
-    );
+    const contactsWithCoordinates = contacts.filter(contact => {
+      if (locationType === 'where_live') {
+        return contact.location_from_latitude && contact.location_from_longitude && 
+               !isNaN(contact.location_from_latitude) && !isNaN(contact.location_from_longitude);
+      } else {
+        return contact.location_met_latitude && contact.location_met_longitude && 
+               !isNaN(contact.location_met_latitude) && !isNaN(contact.location_met_longitude);
+      }
+    });
 
     console.log(`Found ${contactsWithCoordinates.length} contacts with valid coordinates out of ${contacts.length} total contacts`);
 
@@ -62,8 +69,11 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
     
     contactsWithCoordinates.forEach(contact => {
       // Group contacts that are very close to each other (within ~100m)
-      const roundedLat = Math.round(contact.location_from_latitude! * 1000) / 1000;
-      const roundedLng = Math.round(contact.location_from_longitude! * 1000) / 1000;
+      const lat = locationType === 'where_live' ? contact.location_from_latitude! : contact.location_met_latitude!;
+      const lng = locationType === 'where_live' ? contact.location_from_longitude! : contact.location_met_longitude!;
+      
+      const roundedLat = Math.round(lat * 1000) / 1000;
+      const roundedLng = Math.round(lng * 1000) / 1000;
       const key = `${roundedLat}-${roundedLng}`;
       
       if (!groups[key]) {
@@ -84,27 +94,7 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
 
     console.log(`Created ${groupArray.length} location groups:`, groupArray);
     return groupArray;
-  }, [contacts]);
-
-  // Get date color for markers
-  const getDateColor = (contacts: Contact[]) => {
-    if (!contacts.length) return '#6B7280'; // gray-500
-    
-    // Use the most recent contact's date for the group color
-    const mostRecentDate = contacts
-      .map(c => c.date_met ? new Date(c.date_met) : null)
-      .filter(Boolean)
-      .sort((a, b) => b!.getTime() - a!.getTime())[0];
-    
-    if (!mostRecentDate) return '#6B7280'; // gray-500
-    
-    const now = new Date();
-    const diffInDays = (now.getTime() - mostRecentDate.getTime()) / (1000 * 3600 * 24);
-    
-    if (diffInDays <= 30) return '#10B981'; // green-500
-    if (diffInDays <= 90) return '#F59E0B'; // yellow-500
-    return '#EF4444'; // red-500
-  };
+  }, [contacts, locationType]);
 
   const retryTokenFetch = () => {
     window.location.reload();
@@ -203,8 +193,6 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
     locationGroups.forEach((locationGroup, index) => {
       console.log(`Adding marker ${index + 1} for location group with ${locationGroup.contacts.length} contacts at [${locationGroup.longitude}, ${locationGroup.latitude}]`);
       
-      const color = getDateColor(locationGroup.contacts);
-      
       // Create marker element container
       const markerEl = document.createElement('div');
       markerEl.style.cursor = 'pointer';
@@ -214,7 +202,6 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
       root.render(
         <GroupedMarker
           contacts={locationGroup.contacts}
-          color={color}
           onClick={() => {
             console.log(`Marker clicked for location group with ${locationGroup.contacts.length} contacts`);
             setSelectedLocationGroup(locationGroup);
@@ -299,29 +286,11 @@ export const InteractiveMap = forwardRef<InteractiveMapRef, InteractiveMapProps>
         <div className="absolute top-4 left-4 z-10">
           <MultiContactPopup 
             contacts={selectedLocationGroup.contacts} 
+            locationType={locationType}
             onClose={closePopup} 
           />
         </div>
       )}
-
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg">
-        <div className="text-sm font-medium mb-2">Contact Age</div>
-        <div className="space-y-1 text-xs">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <span>Recent (≤30 days)</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <span>Medium (≤90 days)</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-            <span>Old (&gt;90 days)</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 });

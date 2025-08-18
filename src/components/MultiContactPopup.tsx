@@ -3,15 +3,20 @@ import React from 'react';
 import { Contact } from '@/types/contact';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ContactAvatar } from './ContactAvatar';
 import { X, MapPin, Calendar } from 'lucide-react';
+import { LocationType } from './MapView';
 
 interface MultiContactPopupProps {
   contacts: Contact[];
+  locationType: LocationType;
   onClose: () => void;
 }
 
-export const MultiContactPopup = ({ contacts, onClose }: MultiContactPopupProps) => {
-  const location = contacts[0]?.location_from || 'Unknown Location';
+export const MultiContactPopup = ({ contacts, locationType, onClose }: MultiContactPopupProps) => {
+  const location = locationType === 'where_live' 
+    ? (contacts[0]?.location_from || 'Unknown Location')
+    : (contacts[0]?.location_met || 'Unknown Location');
   
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Date unknown';
@@ -31,25 +36,32 @@ export const MultiContactPopup = ({ contacts, onClose }: MultiContactPopupProps)
           </Button>
         </div>
         <div className="text-xs text-gray-500">
-          {contacts.length} contact{contacts.length > 1 ? 's' : ''} from this location
+          {contacts.length} contact{contacts.length > 1 ? 's' : ''} {locationType === 'where_live' ? 'living here' : 'met here'}
         </div>
       </CardHeader>
       <CardContent className="overflow-y-auto max-h-64">
-        <div className="space-y-2">
+        <div className="space-y-3">
           {contacts.map((contact) => (
-            <div key={contact.id} className="border-b border-gray-100 pb-2 last:border-b-0">
-              <div className="font-medium text-sm">{contact.name}</div>
-              {contact.date_met && (
-                <div className="flex items-center space-x-1 text-xs text-gray-500">
-                  <Calendar className="h-3 w-3" />
-                  <span>Met: {formatDate(contact.date_met)}</span>
-                </div>
-              )}
-              {contact.context && (
-                <div className="text-xs text-gray-600 mt-1 line-clamp-2">
-                  {contact.context}
-                </div>
-              )}
+            <div key={contact.id} className="flex items-start space-x-3 border-b border-gray-100 pb-3 last:border-b-0">
+              <ContactAvatar
+                name={contact.name}
+                profilePictureUrl={contact.profile_picture_url}
+                size="sm"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm truncate">{contact.name}</div>
+                {contact.date_met && (
+                  <div className="flex items-center space-x-1 text-xs text-gray-500 mt-1">
+                    <Calendar className="h-3 w-3" />
+                    <span>Met: {formatDate(contact.date_met)}</span>
+                  </div>
+                )}
+                {contact.context && (
+                  <div className="text-xs text-gray-600 mt-1 line-clamp-2">
+                    {contact.context}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>

@@ -1,26 +1,37 @@
 
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Contact } from '@/types/contact';
 import { Globe } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { InteractiveMap, InteractiveMapRef } from './InteractiveMap';
 import { LocationDropdown } from './LocationDropdown';
 import { TopLocationsStats } from './TopLocationsStats';
+import { LocationToggle } from './LocationToggle';
 
 interface MapViewProps {
   contacts: Contact[];
   isLoading: boolean;
 }
 
+export type LocationType = 'where_live' | 'where_met';
+
 export const MapView = ({ contacts, isLoading }: MapViewProps) => {
   const mapRef = useRef<InteractiveMapRef>(null);
+  const [locationType, setLocationType] = useState<LocationType>('where_live');
   
   const contactsWithCoordinates = useMemo(() => {
-    return contacts.filter(contact => 
-      contact.location_from_latitude && 
-      contact.location_from_longitude
-    );
-  }, [contacts]);
+    if (locationType === 'where_live') {
+      return contacts.filter(contact => 
+        contact.location_from_latitude && 
+        contact.location_from_longitude
+      );
+    } else {
+      return contacts.filter(contact => 
+        contact.location_met_latitude && 
+        contact.location_met_longitude
+      );
+    }
+  }, [contacts, locationType]);
 
   const handleLocationSelect = (latitude: number, longitude: number) => {
     console.log('Location selected in MapView:', { latitude, longitude });
@@ -38,13 +49,22 @@ export const MapView = ({ contacts, isLoading }: MapViewProps) => {
   return (
     <div className="space-y-6">
       {/* Location Controls and Stats */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <LocationDropdown 
-          contacts={contactsWithCoordinates} 
-          onLocationSelect={handleLocationSelect}
-        />
-        <div className="lg:ml-auto">
-          <TopLocationsStats contacts={contacts} />
+      <div className="flex flex-col space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
+            <LocationDropdown 
+              contacts={contactsWithCoordinates} 
+              locationType={locationType}
+              onLocationSelect={handleLocationSelect}
+            />
+            <LocationToggle 
+              locationType={locationType}
+              onLocationTypeChange={setLocationType}
+            />
+          </div>
+          <div className="lg:ml-auto">
+            <TopLocationsStats contacts={contacts} locationType={locationType} />
+          </div>
         </div>
       </div>
 
@@ -53,37 +73,36 @@ export const MapView = ({ contacts, isLoading }: MapViewProps) => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Globe className="h-5 w-5" />
-            <span>Where People Live - Interactive World Map</span>
+            <span className="text-sm sm:text-base">
+              {locationType === 'where_live' ? 'Where People Live' : 'Where We Met'} - Interactive World Map
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {contactsWithCoordinates.length > 0 ? (
-            <InteractiveMap ref={mapRef} contacts={contactsWithCoordinates} />
+            <InteractiveMap 
+              ref={mapRef} 
+              contacts={contactsWithCoordinates} 
+              locationType={locationType}
+            />
           ) : (
             <div className="bg-gray-100 rounded-lg p-8 text-center">
               <Globe className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-600 mb-2">No Location Data</h3>
               <p className="text-gray-500 mb-4">
-                Contacts need residential location data to appear on the map. 
-                Add "Lives in" locations to your contacts to see them here.
+                {locationType === 'where_live' 
+                  ? 'Contacts need residential location data to appear on the map. Add "Lives in" locations to your contacts to see them here.'
+                  : 'Contacts need meeting location data to appear on the map. Add "Met at" locations to your contacts to see them here.'
+                }
               </p>
               <div className="text-sm text-gray-500">
-                <p className="mb-2">This map shows where your contacts currently live, not where you met them.</p>
-                <p>Meeting locations are visible in individual contact details.</p>
-              </div>
-              <div className="flex justify-center space-x-4 text-sm mt-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span>Recent (≤30 days)</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <span>Medium (≤90 days)</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <span>Old ({'>'}90 days)</span>
-                </div>
+                <p className="mb-2">
+                  {locationType === 'where_live' 
+                    ? 'This map shows where your contacts currently live.'
+                    : 'This map shows where you met your contacts.'
+                  }
+                </p>
+                <p>Switch between views using the toggle above.</p>
               </div>
             </div>
           )}

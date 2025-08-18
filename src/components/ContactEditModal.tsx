@@ -104,8 +104,15 @@ export const ContactEditModal = ({
     }
   }, [contact, isOpen, form]);
 
+  const handleImageUpload = (url: string | null) => {
+    console.log('Image upload callback received:', url);
+    setProfileImageUrl(url);
+  };
+
   const onSubmit = async (data: ContactFormData) => {
     if (!contact) return;
+    
+    console.log('Saving contact with profile image URL:', profileImageUrl);
     
     const updatedData = {
       ...data,
@@ -124,7 +131,6 @@ export const ContactEditModal = ({
     };
 
     await onSave(updatedData);
-    onClose();
   };
 
   return (
@@ -141,7 +147,7 @@ export const ContactEditModal = ({
               <ImageUpload
                 contactName={form.watch('name')}
                 currentImageUrl={profileImageUrl}
-                onImageUpload={setProfileImageUrl}
+                onImageUpload={handleImageUpload}
                 disabled={isLoading}
               />
             </div>
@@ -213,9 +219,9 @@ export const ContactEditModal = ({
               name="context"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Context</FormLabel>
+                  <FormLabel>Highlights</FormLabel>
                   <FormControl>
-                    <Textarea {...field} rows={3} placeholder="Job title, mutual connections, notes about meeting..." />
+                    <Textarea {...field} rows={3} placeholder="Key points, important details, things to remember..." />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

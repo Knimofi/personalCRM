@@ -3,18 +3,28 @@ import React from 'react';
 import { Contact } from '@/types/contact';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin } from 'lucide-react';
+import { LocationType } from './MapView';
 
 interface LocationDropdownProps {
   contacts: Contact[];
+  locationType: LocationType;
   onLocationSelect: (latitude: number, longitude: number) => void;
 }
 
-export const LocationDropdown = ({ contacts, onLocationSelect }: LocationDropdownProps) => {
-  const contactsWithCoordinates = contacts.filter(contact => contact.location_from_latitude && contact.location_from_longitude);
+export const LocationDropdown = ({ contacts, locationType, onLocationSelect }: LocationDropdownProps) => {
+  const contactsWithCoordinates = contacts.filter(contact => {
+    if (locationType === 'where_live') {
+      return contact.location_from_latitude && contact.location_from_longitude;
+    } else {
+      return contact.location_met_latitude && contact.location_met_longitude;
+    }
+  });
   
   // Group contacts by location
   const locationGroups = contactsWithCoordinates.reduce((groups, contact) => {
-    const key = `${contact.location_from_latitude}-${contact.location_from_longitude}`;
+    const lat = locationType === 'where_live' ? contact.location_from_latitude! : contact.location_met_latitude!;
+    const lng = locationType === 'where_live' ? contact.location_from_longitude! : contact.location_met_longitude!;
+    const key = `${lat}-${lng}`;
     if (!groups[key]) {
       groups[key] = [];
     }
@@ -24,7 +34,9 @@ export const LocationDropdown = ({ contacts, onLocationSelect }: LocationDropdow
 
   const locations = Object.entries(locationGroups).map(([coordinates, groupContacts]) => {
     const [lat, lng] = coordinates.split('-').map(Number);
-    const location = groupContacts[0].location_from || 'Unknown Location';
+    const location = locationType === 'where_live' 
+      ? (groupContacts[0].location_from || 'Unknown Location')
+      : (groupContacts[0].location_met || 'Unknown Location');
     return {
       coordinates,
       location,

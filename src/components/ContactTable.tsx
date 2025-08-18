@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   Table,
@@ -14,7 +13,9 @@ import { Contact } from '@/types/contact';
 import { ContactDetailModal } from './ContactDetailModal';
 import { ContactEditModal } from './ContactEditModal';
 import { ConfirmationDialog } from './ConfirmationDialog';
+import { ContactAvatar } from './ContactAvatar';
 import { useContacts } from '@/hooks/useContacts';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   Search, 
   Calendar, 
@@ -52,13 +53,12 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   
   const { updateContact, deleteContact } = useContacts();
+  const isMobile = useIsMobile();
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      // Double click - reverse direction
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      // Single click - new field, ascending
       setSortField(field);
       setSortDirection('asc');
     }
@@ -71,23 +71,19 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
       let aValue = a[sortField];
       let bValue = b[sortField];
 
-      // Handle null/undefined values
       if (aValue === null || aValue === undefined) aValue = '';
       if (bValue === null || bValue === undefined) bValue = '';
 
-      // Convert to strings for comparison
       const aStr = String(aValue).toLowerCase();
       const bStr = String(bValue).toLowerCase();
 
       let comparison = 0;
 
-      // Special handling for dates
       if (sortField === 'date_met' || sortField === 'birthday') {
         const aDate = aValue ? new Date(aValue as string) : new Date(0);
         const bDate = bValue ? new Date(bValue as string) : new Date(0);
         comparison = aDate.getTime() - bDate.getTime();
       } else {
-        // String comparison
         comparison = aStr.localeCompare(bStr);
       }
 
@@ -96,7 +92,6 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
   };
 
   const filteredContacts = contacts.filter(contact => {
-    // Filter by hidden status
     if (!showHidden && contact.is_hidden) return false;
     
     const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -207,9 +202,153 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
     );
   }
 
+  // Mobile card view for very small screens
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        {/* Mobile Filters */}
+        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search contacts..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <select
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+          >
+            <option value="">All Locations</option>
+            {uniqueLocations.map(location => (
+              <option key={location} value={location}>{location}</option>
+            ))}
+          </select>
+          <div className="flex space-x-2">
+            <Button
+              variant={showHidden ? "default" : "outline"}
+              onClick={() => setShowHidden(!showHidden)}
+              size="sm"
+              className="flex items-center space-x-2 flex-1"
+            >
+              {showHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              <span>{showHidden ? 'Hide Hidden' : `Show Hidden (${hiddenCount})`}</span>
+            </Button>
+            {(searchTerm || locationFilter) && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm('');
+                  setLocationFilter('');
+                }}
+                size="sm"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="space-y-3">
+          {sortedContacts.map((contact) => (
+            <div
+              key={contact.id}
+              className={`bg-white rounded-lg border p-4 cursor-pointer hover:bg-gray-50 ${contact.is_hidden ? 'opacity-60' : ''}`}
+              onClick={() => setSelectedContact(contact)}
+            >
+              <div className="flex items-start space-x-3">
+                <ContactAvatar
+                  name={contact.name}
+                  profilePictureUrl={contact.profile_picture_url}
+                  size="md"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium truncate">{contact.name}</h3>
+                    <div className="flex space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleToggleHidden(contact, e)}
+                        className="h-8 w-8 p-0"
+                      >
+                        {contact.is_hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingContact(contact);
+                        }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  {contact.location_from && (
+                    <div className="flex items-center space-x-1 text-sm text-gray-600 mt-1">
+                      <MapPin className="h-3 w-3" />
+                      <span className="truncate">{contact.location_from}</span>
+                    </div>
+                  )}
+                  {contact.context && (
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{contact.context}</p>
+                  )}
+                  {contact.date_met && (
+                    <div className="flex items-center space-x-1 text-xs text-gray-500 mt-2">
+                      <Calendar className="h-3 w-3" />
+                      <span>Met: {formatDate(contact.date_met)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {selectedContact && (
+          <ContactDetailModal
+            contact={selectedContact}
+            isOpen={!!selectedContact}
+            onClose={() => setSelectedContact(null)}
+          />
+        )}
+
+        {editingContact && (
+          <ContactEditModal
+            contact={editingContact}
+            isOpen={!!editingContact}
+            onClose={() => setEditingContact(null)}
+            onSave={handleEdit}
+            isLoading={updateContact.isPending}
+          />
+        )}
+
+        {deletingContact && (
+          <ConfirmationDialog
+            isOpen={!!deletingContact}
+            onClose={() => setDeletingContact(null)}
+            onConfirm={handleDelete}
+            title="Delete Contact"
+            description={`Are you sure you want to delete ${deletingContact.name}? This action cannot be undone.`}
+            confirmText="Delete"
+            isDestructive
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Desktop table view
   return (
     <div className="space-y-4">
-      {/* Filters */}
+      {/* Desktop Filters */}
       <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 rounded-lg">
         <div className="flex-1">
           <div className="relative">
@@ -263,14 +402,15 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
         {!showHidden && hiddenCount > 0 && ` (${hiddenCount} hidden)`}
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg border">
+      {/* Desktop Table */}
+      <div className="bg-white rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="font-semibold w-16">Photo</TableHead>
               <SortableHeader field="name">Name</SortableHeader>
               <SortableHeader field="location_from">Location</SortableHeader>
-              <SortableHeader field="context">Context</SortableHeader>
+              <SortableHeader field="context">Highlights</SortableHeader>
               <SortableHeader field="date_met">Date Met</SortableHeader>
               <SortableHeader field="birthday">Birthday</SortableHeader>
               <SortableHeader field="email">Email</SortableHeader>
@@ -287,6 +427,13 @@ export const ContactTable = ({ contacts, isLoading }: ContactTableProps) => {
                 className={`cursor-pointer hover:bg-gray-50 ${contact.is_hidden ? 'opacity-60' : ''}`}
                 onClick={() => setSelectedContact(contact)}
               >
+                <TableCell>
+                  <ContactAvatar
+                    name={contact.name}
+                    profilePictureUrl={contact.profile_picture_url}
+                    size="sm"
+                  />
+                </TableCell>
                 <TableCell className="font-medium">
                   <div className="flex items-center space-x-2">
                     <span>{contact.name}</span>
