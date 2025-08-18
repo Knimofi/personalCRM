@@ -34,22 +34,22 @@ function AppContent() {
   }
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<ContactManager />} />
-        <Route path="/settings" element={<SettingsPage />} />
-      </Routes>
-    </Router>
+    <Routes>
+      <Route path="/" element={<ContactManager />} />
+      <Route path="/settings" element={<SettingsPage />} />
+    </Routes>
   );
 }
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div>
-        <AppContent />
-        <Toaster />
-      </div>
+      <Router>
+        <div>
+          <AppContent />
+          <Toaster />
+        </div>
+      </Router>
     </QueryClientProvider>
   );
 }
